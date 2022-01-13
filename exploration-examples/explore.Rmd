@@ -3,10 +3,8 @@ title: "Exploratory data analysis example for STAT 540"
 author: Paul Pavlidis (paul@msl.ubc.ca) & Keegan Korthauer (keegan@stat.ubc.ca)
 date: January 2021
 output: 
-  html_document:
-    keep_md: yes
+  github_document:
     toc: true
-    toc_float: true
     number_sections: true
 ---
 
@@ -21,7 +19,6 @@ To run the code, you'll need these packages (install them first if they aren't a
 ```{r setup, message = FALSE, warning = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
-library(plyr)
 library(readxl)
 library(gridExtra)
 library(ComplexHeatmap) 
@@ -45,7 +42,7 @@ theme_update(panel.grid.major = element_blank(), panel.grid.minor = element_blan
 
 Many of the examples here will use data from [Gompers et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/28671691). In this experiment, RNA-seq was performed on tissue from mice from two different genotypes, 5 developmental stages, and both sexes. The primary interest was the effect of genotype ("Group"), in which normal (wild-type) mice were compared to mice engineered to have one defective (mutant) copy of a particular gene (Chd8). According to paper there is supposed to be a total of 26 mutant and 18 WT samples. The paper also refers to 11,936 genes "robustly expressed".
 
-![](../../lectures/lectures_2021/source/lec03-eda/img/GompersDesign.png)
+![](images/GompersDesign.png)
 
 First, let's obtain the data from GEO. The record for this study is at [Accession GSE99331](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE99331). We would like the log(RPKM) matrix file listed in the Supplementary file list. The file name is `GSE99331_Gompers_logRPKM_Matrix.txt.gz`, which indicates it contains log-transformed RPKM Ideally, we'd have raw counts, but these were not made publicly available. However, Paul was obtain them directly from the authors - these are used in the RNA-seq examples Rmd. 
 
@@ -117,7 +114,7 @@ d_long <- d %>%
   gather(key="Sample", value="Expression", -gene)
 
 # join rpkms with meta data (already in long format)
-d_long <- join(d_long, m, by="Sample")
+d_long <- left_join(d_long, m, by="Sample")
 
 dim(d_long)
 
@@ -126,7 +123,7 @@ head(d_long)
 
 Another great way to organize the data is to use an [`SummarizedExperiment`](https://bioconductor.org/packages/release/bioc/vignettes/SummarizedExperiment/inst/doc/SummarizedExperiment.html). This is the "Bioconductor way" of housing the data and metadata in one object, and has handy accessor functions that subset both types of information at once (e.g. subsetting by sample or gene).
 
-![](../../lectures/lectures_2021/source/lec03-eda/img/summarizedexperiment.png)
+![](images/summarizedexperiment.png)
 
 `SummarizedExperiment` objects (and similar derived classes) are ideal for analyses like differential expression, as many Bioconductor packages use this object format as input and output. It is also more efficient for storage than the long format (since the long format duplicates information when it converts to one row per measurement), but it is less flexible for certain types of visualization, so requires either some manipulation or specialized functions. We'll come back to this format later, but here is how to construct a `SummarizedExperiment` object for now. 
 
