@@ -3,34 +3,27 @@ Exploratory data analysis example for STAT 540
 Paul Pavlidis (<paul@msl.ubc.ca>) & Keegan Korthauer
 (<keegan@stat.ubc.ca>)
 
--   [1 Preliminaries](#preliminaries)
--   [2 Load data](#load-data)
--   [3 Organizing the data](#organizing-the-data)
--   [4 Initial inspection](#initial-inspection)
-    -   [4.1 Simple plots of one row/col](#simple-plots-of-one-rowcol)
--   [5 Density plots](#density-plots)
-    -   [5.1 Box plots](#box-plots)
-        -   [5.1.1 Base R graphics](#base-r-graphics)
-        -   [5.1.2 ggplot](#ggplot)
-    -   [5.2 Density plots](#density-plots-1)
-        -   [5.2.1 Base R graphics](#base-r-graphics-1)
-        -   [5.2.2 ggplot](#ggplot-1)
-    -   [5.3 Histograms](#histograms)
-        -   [5.3.1 Base R graphics](#base-r-graphics-2)
-        -   [5.3.2 ggplot](#ggplot-2)
-    -   [5.4 Histograms vs density plots for bounded
+-   [1. Preliminaries](#1-preliminaries)
+-   [2. Load data](#2-load-data)
+-   [3. Organizing the data](#3-organizing-the-data)
+-   [4. Initial inspection](#4-initial-inspection)
+    -   [Simple plots of one row/col](#simple-plots-of-one-rowcol)
+-   [5. Density plots](#5-density-plots)
+    -   [Box plots](#box-plots)
+    -   [Smoothed density plots](#smoothed-density-plots)
+    -   [Histograms](#histograms)
+    -   [Histograms vs density plots for bounded
         data](#histograms-vs-density-plots-for-bounded-data)
-    -   [5.5 Violin plots](#violin-plots)
-        -   [5.5.1 ggplot](#ggplot-3)
--   [6 Expression of Chd8](#expression-of-chd8)
-    -   [6.1 base](#base)
-    -   [6.2 ggplot version](#ggplot-version)
--   [7 Scatter plots](#scatter-plots)
-    -   [7.1 Log transformation](#log-transformation)
--   [8 Heatmaps](#heatmaps)
--   [9 Checking metadata with sex-specific
-    genes](#checking-metadata-with-sex-specific-genes)
--   [10 Sample-sample correlations](#sample-sample-correlations)
+    -   [Violin plots](#violin-plots)
+-   [6. Expression of Chd8](#6-expression-of-chd8)
+    -   [base](#base)
+    -   [ggplot version](#ggplot-version)
+-   [7. Scatter plots](#7-scatter-plots)
+    -   [Log transformation](#log-transformation)
+-   [8. Heatmaps](#8-heatmaps)
+-   [9. Checking metadata with sex-specific
+    genes](#9-checking-metadata-with-sex-specific-genes)
+-   [10. Sample-sample correlations](#10-sample-sample-correlations)
 
 This material is a companion to the lecture on Exploratory Data Analysis
 & Experimental Design for [STAT 540](https://stat540-ubc.github.io/). It
@@ -41,7 +34,7 @@ created by Paul Pavlidis, and modified by Keegan Korthauer.
 Often there is more than one way to do the same thing, so not everything
 here is shown in the lecture.
 
-# 1 Preliminaries
+# 1. Preliminaries
 
 To run the code, you’ll need these packages (install them first if they
 aren’t already installed):
@@ -69,7 +62,7 @@ theme_set(theme_bw())
 theme_update(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
-# 2 Load data
+# 2. Load data
 
 Many of the examples here will use data from [Gompers et al.,
 2017](https://www.ncbi.nlm.nih.gov/pubmed/28671691). In this experiment,
@@ -162,7 +155,7 @@ m$Group=recode(m$Group, `1`="WT", `2`="Mutant")
 m$SeqRun=factor(m$SeqRun)
 ```
 
-# 3 Organizing the data
+# 3. Organizing the data
 
 Next, we’ll ombine the metadata and data into a single structure,
 tidyverse style to play nice with ggplot2. Before combining, it is
@@ -291,7 +284,7 @@ colData(se)$DPC
     ## [16] 14.5 14.5 17.5 17.5 17.5 17.5 17.5 17.5 17.5 17.5 17.5 17.5 21.0 21.0 21.0
     ## [31] 21.0 21.0 21.0 21.0 21.0 21.0 21.0 21.0 77.0 77.0 77.0 77.0 77.0 77.0
 
-# 4 Initial inspection
+# 4. Initial inspection
 
 Some very basic looks at the data. we’ll use the `SummarizedExperiment`
 object format for these checks.
@@ -340,8 +333,8 @@ tail(row.names(se))
 row.names(se)[sample(nrow(se), 10)]
 ```
 
-    ##  [1] "Fam53b"   "Aldh16a1" "Idh3b"    "Cwf19l1"  "Pdk3"     "Eri3"    
-    ##  [7] "Fads1"    "Bub1b"    "Kxd1"     "Tbx18"
+    ##  [1] "H1fx"   "Mmab"   "Dgat2"  "Zxdb"   "Tiparp" "Alkbh6" "Stk16"  "Adcy5" 
+    ##  [9] "Stip1"  "Ppp5c"
 
 ``` r
 # What's the range of values?
@@ -457,7 +450,7 @@ Group is not confounded with batch. We’ll come back to this.
 
 We’ll now move on to the main data.
 
-## 4.1 Simple plots of one row/col
+## Simple plots of one row/col
 
 ``` r
 # Examples of simple plots of one column and one row. Used in previous lecture.
@@ -472,17 +465,17 @@ plot(t(d[100,]), pch=20, ylab="Expression", xlab="Column")
 
 ![](explore_files/figure-gfm/unnamed-chunk-7-2.png)<!-- -->
 
-# 5 Density plots
+# 5. Density plots
 
 Here, we’ll examine box plots, smoothed density plots, and histograms.
 For each one, we’ll show the base R graphics way, as well as the using
 the ggplot version using the tidy data (long) format.
 
-## 5.1 Box plots
+## Box plots
 
 First, we’ll look at box plots per sample.
 
-### 5.1.1 Base R graphics
+### Base R graphics
 
 ``` r
 boxplot(d, pch='.', xaxt='n', xlab="Sample", ylab="Expression")
@@ -495,7 +488,7 @@ normalized, but not quantile normalized since they don’t have the exact
 same distribution (quantile normalization is explained later in the
 course). I’m going to just leave it this way for now.
 
-### 5.1.2 ggplot
+### ggplot
 
 ``` r
 # boxplot.To show sample names use element_text(angle = 90, hjust = 1) instead of element_blank()
@@ -506,12 +499,12 @@ ggplot(d_long, aes(Sample, Expression)) +
 
 ![](explore_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
-## 5.2 Density plots
+## Smoothed density plots
 
 And next smoothed density plots (one grey line per sample, with the dark
 line representing the overall density of all samples).
 
-### 5.2.1 Base R graphics
+### Base R graphics
 
 ``` r
 plot(0,xlim=c(-8,14), ylim=c(0,0.25), xlab="Expression level", type="n", ylab="Density", main="All samples and total")
@@ -526,7 +519,7 @@ lines(density(as.matrix(d)), xlab="Expression level",  lwd=2)
 
 ![](explore_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
-### 5.2.2 ggplot
+### ggplot
 
 ``` r
 # Overlaid plots
@@ -539,12 +532,12 @@ ggplot(data = d_long) +
 
 ![](explore_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
-## 5.3 Histograms
+## Histograms
 
 Finally, histograms. Here is a histogram for the first sample (all
 genes).
 
-### 5.3.1 Base R graphics
+### Base R graphics
 
 ``` r
 hist(d[,1], breaks=50, xlab="Expression", 
@@ -553,7 +546,7 @@ hist(d[,1], breaks=50, xlab="Expression",
 
 ![](explore_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
-### 5.3.2 ggplot
+### ggplot
 
 ``` r
 #ggplot:
@@ -565,7 +558,7 @@ d_long %>% filter(Sample == d_long$Sample[1]) %>%
 
 ![](explore_files/figure-gfm/histograms-1.png)<!-- -->
 
-## 5.4 Histograms vs density plots for bounded data
+## Histograms vs density plots for bounded data
 
 Density plots are not ideal for you have bounded data - especially if
 you care about what happens near the edges of the domain:
@@ -589,14 +582,14 @@ grid.arrange(p1, p2, nrow = 1)
 This will be relevant to topics such as inspecting distributions of
 p-values.
 
-## 5.5 Violin plots
+## Violin plots
 
 A violin plot is similar to a boxplot, but instead of a box uses a
 symmetrical ‘violin’ shape that represents the smoothed density. We’ll
 only show the ggplot version here since base graphics would require an
 add-on package.
 
-### 5.5.1 ggplot
+### ggplot
 
 ``` r
 d_long %>%
@@ -607,12 +600,12 @@ d_long %>%
 
 ![](explore_files/figure-gfm/violin-1.png)<!-- -->
 
-# 6 Expression of Chd8
+# 6. Expression of Chd8
 
 In the paper they say Chd8 was the top differentially-expressed gene.
 What does this look like? Again showing both base and ggplot2 way.
 
-## 6.1 base
+## base
 
 ``` r
 plot(t(d["Chd8",]), pch=20, ylab="Expression", xlab="Sample", main="Expression of Chd8")
@@ -641,7 +634,7 @@ plot(t(d["Chd8",]) ~ m$DPC, type="p", pch=20, ylab="Expression", xlab="DPC (days
 Ideally, we’d add a legend, but this is tedious in base graphics. Let’s
 switch to ggplot2 / tidy way.
 
-## 6.2 ggplot version
+## ggplot version
 
 Note how I subset. Here we’ll also change DPC to a factor instead of
 numeric so it’s evenly spaced on the x axis.
@@ -663,7 +656,7 @@ Chd8 expression drops with developmental stage (this was also noted in
 the paper), though we must keep in mind there is a confound with
 “SeqRun” (batch).
 
-# 7 Scatter plots
+# 7. Scatter plots
 
 Let’s make a scatter plot comparing expression of all genes in sample 1
 vs sample 2. First pass: points are too big and ugly.
@@ -744,7 +737,7 @@ GGally::ggpairs(d[sample(nrow(d), n), 4:15], lower=list(continuous=wrap(ggally_p
 
 ![](explore_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
-## 7.1 Log transformation
+## Log transformation
 
 It’s worth a little digression to note that taking logarithms is often
 important in visualization (and analysis, for that matter). The data
@@ -778,7 +771,7 @@ constant. For data like this, a typical choice is adding 1 or 0.1. So
 instead of examining the distribution of log2(x), you’d look at
 log2(x+1).
 
-# 8 Heatmaps
+# 8. Heatmaps
 
 A heatmap is a convenient way to display a large amount of data
 (e.g. many genes for several samples), making it easier to spot patterns
@@ -809,7 +802,7 @@ Because random genes show patterns related to DPC, it is obvious that
 this is a very strong signal (but remember there is also a batch
 confound).
 
-# 9 Checking metadata with sex-specific genes
+# 9. Checking metadata with sex-specific genes
 
 A common way to assess the correctness of genomics or genetics data is
 to make use of the fact that some genes are expressed in only one sex.
@@ -882,7 +875,7 @@ Chd8 genotype.
 *For now* I am not going to fix this but of course in any further
 analysis we need to do so.
 
-# 10 Sample-sample correlations
+# 10. Sample-sample correlations
 
 Next we look at the sample-sample correlation. We are expecting to see a
 strong pattern, because we see clear DPC-related patterns in random

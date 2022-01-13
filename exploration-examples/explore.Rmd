@@ -4,14 +4,14 @@ author: Paul Pavlidis (paul@msl.ubc.ca) & Keegan Korthauer (keegan@stat.ubc.ca)
 output: 
   github_document:
     toc: true
-    number_sections: true
+    toc_depth: 2
 ---
 
 This material is a companion to the lecture on Exploratory Data Analysis & Experimental Design for [STAT 540](https://stat540-ubc.github.io/). It demonstrates a number of data visualization/plotting methods along with some approaches to exploring a genomics data set. It was originally created by Paul Pavlidis, and modified by Keegan Korthauer. 
 
 Often there is more than one way to do the same thing, so not everything here is shown in the lecture.
 
-# Preliminaries
+# 1. Preliminaries
 
 To run the code, you'll need these packages (install them first if they aren't already installed):
 
@@ -37,7 +37,7 @@ theme_set(theme_bw())
 theme_update(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ```
 
-# Load data
+# 2. Load data
 
 Many of the examples here will use data from [Gompers et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/28671691). In this experiment, RNA-seq was performed on tissue from mice from two different genotypes, 5 developmental stages, and both sexes. The primary interest was the effect of genotype ("Group"), in which normal (wild-type) mice were compared to mice engineered to have one defective (mutant) copy of a particular gene (Chd8). According to paper there is supposed to be a total of 26 mutant and 18 WT samples. The paper also refers to 11,936 genes "robustly expressed".
 
@@ -95,7 +95,7 @@ m$Group=recode(m$Group, `1`="WT", `2`="Mutant")
 m$SeqRun=factor(m$SeqRun)
 ```
 
-# Organizing the data
+# 3. Organizing the data
 
 Next, we'll ombine the metadata and data into a single structure, tidyverse style to play nice with ggplot2. Before combining, it is **very important** to make sure that the samples are in the same order in the RPKM matrix and metadata table.
 
@@ -139,7 +139,7 @@ head(assays(se)$logrpkm[,se$DPC==77.0])
 colData(se)$DPC
 ```
 
-# Initial inspection 
+# 4. Initial inspection 
 
 Some very basic looks at the data. we'll use the `SummarizedExperiment` object format for these checks.
 
@@ -213,7 +213,7 @@ plot(d[,1], pch='.', ylab="Expression", xlab="Row")
 plot(t(d[100,]), pch=20, ylab="Expression", xlab="Column")
 ```
 
-# Density plots 
+# 5. Density plots 
 
 Here, we'll examine box plots, smoothed density plots, and histograms. For each one, we'll show the base R graphics way, as well as the using the ggplot version using the tidy data (long) format.
 
@@ -238,7 +238,7 @@ ggplot(d_long, aes(Sample, Expression)) +
   theme(axis.text.x = element_blank())
 ```
 
-## Density plots
+## Smoothed density plots
 
 And next smoothed density plots (one grey line per sample, with the dark line representing the overall density of all samples).
 
@@ -314,7 +314,7 @@ d_long %>%
 ```
 
 
-# Expression of Chd8
+# 6. Expression of Chd8
 
 In the paper they say Chd8 was the top differentially-expressed gene. What does this look like? Again showing both base and ggplot2 way.
 
@@ -354,7 +354,7 @@ d_long %>%
 
 The effect of the mutation wouldn't be obvious at all if we didn't color by group. But this agrees with the paper (Figure 1d). It also looks like Chd8 expression drops with developmental stage (this was also noted in the paper), though we must keep in mind there is a confound with "SeqRun" (batch).
 
-# Scatter plots
+# 7. Scatter plots
 
 Let's make a scatter plot comparing expression of all genes in sample 1 vs sample 2. First pass: points are too big and ugly.
 
@@ -423,7 +423,7 @@ Whenever you see a plot like this, you just know you can't leave it like that! Y
 
 Frequently when taking logs you will run into the problem of what to do with non-positive values (zeros, in particular). Just add a small constant. For data like this, a typical choice is adding 1 or 0.1. So instead of examining the distribution of log2(x), you'd look at log2(x+1).
 
-# Heatmaps
+# 8. Heatmaps
 
 A heatmap is a convenient way to display a large amount of data (e.g. many genes for several samples), making it easier to spot patterns of groupings/commonalities across the row and/or column variables. 
 
@@ -447,7 +447,7 @@ heatmap(hd, Colv=NA,  scale="none", cexCol=0.5, cexRow=0.5, col=bcols)
 
 Because random genes show patterns related to DPC, it is obvious that this is a very strong signal (but remember there is also a batch confound).
 
-# Checking metadata with sex-specific genes
+# 9. Checking metadata with sex-specific genes
 
 A common way to assess the correctness of genomics or genetics data is to make use of the fact that some genes are expressed in only one sex. If a data set contains samples from both males and females, then we can assess whether the data lines up with expectations. Mixups in published data sets are [suprisingly common](https://f1000research.com/articles/5-2103/). Good marker genes for sex include Xist and Uty (there are others).
 
@@ -493,7 +493,7 @@ After some further checking by hand, and an email exchange with the senior autho
 
 *For now* I am not going to fix this but of course in any further analysis we need to do so.
 
-# Sample-sample correlations
+# 10. Sample-sample correlations
 
 Next we look at the sample-sample correlation. We are expecting to see a strong pattern, because we see clear DPC-related patterns in random genes.
 
