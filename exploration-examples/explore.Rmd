@@ -1,7 +1,6 @@
 ---
 title: "Exploratory data analysis example for STAT 540"
 author: Paul Pavlidis (paul@msl.ubc.ca) & Keegan Korthauer (keegan@stat.ubc.ca)
-date: January 2021
 output: 
   github_document:
     toc: true

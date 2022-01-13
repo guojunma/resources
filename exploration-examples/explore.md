@@ -2,7 +2,6 @@ Exploratory data analysis example for STAT 540
 ================
 Paul Pavlidis (<paul@msl.ubc.ca>) & Keegan Korthauer
 (<keegan@stat.ubc.ca>)
-January 2021
 
 -   [1 Preliminaries](#preliminaries)
 -   [2 Load data](#load-data)
@@ -341,9 +340,8 @@ tail(row.names(se))
 row.names(se)[sample(nrow(se), 10)]
 ```
 
-    ##  [1] "Pink1"         "Mgst3"         "Lipo1"         "Utp11l"       
-    ##  [5] "Cald1"         "Sptlc2"        "Prkaa2"        "1700094D03Rik"
-    ##  [9] "Rab24"         "Cox6b1"
+    ##  [1] "Fam53b"   "Aldh16a1" "Idh3b"    "Cwf19l1"  "Pdk3"     "Eri3"    
+    ##  [7] "Fads1"    "Bub1b"    "Kxd1"     "Tbx18"
 
 ``` r
 # What's the range of values?
