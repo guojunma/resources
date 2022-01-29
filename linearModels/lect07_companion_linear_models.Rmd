@@ -1,8 +1,7 @@
 ---
 title: "STAT 540: Companion to Lecture 7: Linear Models"
 author: Keegan Korthauer
-date: 29 January 2021
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -59,7 +58,7 @@ twoGenes <- toLongerMeta(eset) %>%
   mutate(gene = ifelse(gene == "1440645_at", "BB114814", "Cdc14a")) 
 ```
 
-Note that the source Rmd for this document can be found [here](https://github.com/STAT540-UBC/STAT540-UBC.github.io/tree/master/examples/linearModels)
+Note that the source Rmd for this document can be found [here](https://github.com/STAT540-UBC/resources/blob/main/linearModels/lect07_companion_linear_models.Rmd)
 
 ## Two-way ANOVA or a linear model with interaction 
 
@@ -101,7 +100,7 @@ p1 +
                 label = TeX("$\\widehat{\\mu}_1$", output = "character")), 
             colour = "black", size = 6, parse = TRUE, nudge_x = -0.25) +
   geom_text(aes(x = "E16", y = mu.hat[2,2], 
-                label = TeX("$\\widehat{\\mu}_2}$", output = "character")), 
+                label = TeX("$\\widehat{\\mu}_2$", output = "character")), 
             colour="black", size=6,parse = TRUE, nudge_x = -0.25) +
   geom_text(aes(x = "4W", y = mu.hat[3,2], 
                 label = TeX("$\\widehat{\\mu}_3$", output = "character")), 
@@ -122,7 +121,7 @@ $$\mu_4=E[Y_{(NrlKO,4W)}]$$
 
 ### Reference-treatment effect parametrization
 
-By default, `lm` assumes a <font color = "red">**reference-treatment effect**</font> parametrization. We just need *more* dummy variables!!
+By default, `lm` assumes a <font color = "red">**reference-treatment effect**</font> parametrization. We just need *more* indicator variables!!
 
 ### Mathematically (a bit more difficult...)
 
@@ -131,13 +130,13 @@ Subscripts: $i$ indexes samples per group, $j=\{WT, NrlKO\}$, $k=\{E16, 4W\}$
 
 The names of these parameters and variables look overwhelming but think of them as just names for:
 
-> $x_{KO,ijk}$: a dummy variable with value 1 for NrlKO genotype samples (any sample with j=NrlKO), and 0 otherwise. I call this variable $x_{KO}$
+> $x_{KO,ijk}$: a indicator variable with value 1 for NrlKO genotype samples (any sample with j=NrlKO), and 0 otherwise. I call this variable $x_{KO}$
 
-> $x_{4W,ijk}$: a different dummy variable with value 1 for 4W  samples (any sample with k=4W), and 0 otherwise. I call this variable $x_{4W}$
+> $x_{4W,ijk}$: a different indicator variable with value 1 for 4W  samples (any sample with k=4W), and 0 otherwise. I call this variable $x_{4W}$
 
 > $\tau_{KO}$, $\tau_{4W}$, and $\tau_{KO:4W}$: parameters to model the *simple* effects of genotype (NrlKO), development (4W), and their interaction
 
-**Note**: in this "simple" version with 2 levels per factor we need only one dummy variable per factor: $x_{KO}$ and $x_{4W}$. But this model can be extended to multiple factors with multiple levels. You just need to add more dummy variables!
+**Note**: in this "simple" version with 2 levels per factor we need only one indicator variable per factor: $x_{KO}$ and $x_{4W}$. But this model can be extended to multiple factors with multiple levels. You just need to add more indicator variables!
 
 ### Reference: WT & E16
 
@@ -320,7 +319,7 @@ p1.itx +
                  colour = 'blue', arrow = arrow(length = unit(0.1,"in")),
                  size = 0.75) +
     geom_text(aes(x = 2.36, y = abs(mu.hat[4,2] + mu.add)/2, 
-                  label = TeX("$\\widehat{\\tau}_{KO:4W}$", output = "character")),
+                  label = TeX("$\\widehat{\\tau}_{KO{:}4W}$", output = "character")),
               colour = "blue", size = 6, parse = TRUE)
 ```
 
@@ -452,6 +451,3 @@ Note that the main effects for both are also significant (but not the interactio
 ```{r,echo=FALSE,highlight.output = c(3:5),warning=FALSE}
 anova(multFit)
 ```
-
-
----
