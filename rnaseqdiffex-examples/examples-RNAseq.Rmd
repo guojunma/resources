@@ -1,14 +1,11 @@
 ---
 title: "RNA-seq examples"
 author: Paul Pavlidis and Keegan Korthauer
-date: February 2021
 output:
-  html_document:
+  github_document:
     toc: true
-    toc_float: true
     fig_width: 6
     fig_height: 5
-    keep_md: true
 ---
 
 # Introduction
