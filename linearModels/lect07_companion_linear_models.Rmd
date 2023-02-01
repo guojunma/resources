@@ -1,7 +1,9 @@
 ---
 title: "STAT 540: Companion to Lecture 7: Linear Models"
 author: Keegan Korthauer
-output: pdf_document
+output:
+  github_document:
+    toc: true
 ---
 
 ```{r setup, include=FALSE}
@@ -27,7 +29,7 @@ pData(eset) <- pData(eset) %>%
     grepl("P2", title) ~ "P2",
     grepl("P6", title) ~ "P6",
     grepl("P10", title) ~ "P10",
-    grepl("4 weeks", title) ~ "4W"
+    grepl("4 weeks", title) ~ "P28"
   )) %>%
   mutate(genotype = case_when(
     grepl("Nrl-ko", title) ~ "NrlKO",
@@ -35,7 +37,7 @@ pData(eset) <- pData(eset) %>%
   ))
 
 pData(eset) <- pData(eset) %>%
-  mutate(dev_stage = fct_relevel(dev_stage, "E16", "P2", "P6", "P10", "4W")) %>%
+  mutate(dev_stage = fct_relevel(dev_stage, "E16", "P2", "P6", "P10", "P28")) %>%
   mutate(genotype = as.factor(genotype)) %>%
   mutate(genotype = fct_relevel(genotype, "WT", "NrlKO"))
 
@@ -64,11 +66,11 @@ Note that the source Rmd for this document can be found [here](https://github.co
 
 Which group means are we comparing in a model with 2 factors? 
 
-For simplicity, we first consider only two levels of `dev_stage`: E16 and 4W
+For simplicity, we first consider only two levels of `dev_stage`: E16 and P28
 
 ```{r,echo=FALSE, include=FALSE}
 ##########################################################
-## simplying dev_stage to first and last timepoints
+## simplifying dev_stage to first and last timepoints
 ##########################################################
 
 # Gene selected for illustration
@@ -92,7 +94,7 @@ p1 <- ggplot(oneGene,
   geom_jitter(width = 0.1, alpha = 0.6) +
   ylim(6, 13) + 
   stat_summary(aes(group = genotype,colour=genotype), 
-               fun = mean, geom = "line", size = 1.5) +
+               fun = mean, geom = "line", linewidth = 1.5) +
   scale_color_manual(values = c('WT' = '#00BFC4', 'NrlKO' = '#F8766D'))
 
 p1 +
@@ -102,22 +104,22 @@ p1 +
   geom_text(aes(x = "E16", y = mu.hat[2,2], 
                 label = TeX("$\\widehat{\\mu}_2$", output = "character")), 
             colour="black", size=6,parse = TRUE, nudge_x = -0.25) +
-  geom_text(aes(x = "4W", y = mu.hat[3,2], 
+  geom_text(aes(x = "P28", y = mu.hat[3,2], 
                 label = TeX("$\\widehat{\\mu}_3$", output = "character")), 
             colour = "black", size = 6, parse = TRUE, nudge_x = 0.28) +
-  geom_text(aes(x = "4W", y = mu.hat[4,2], 
+  geom_text(aes(x = "P28", y = mu.hat[4,2], 
                 label = TeX("$\\widehat{\\mu}_4$", output = "character")), 
             colour = "black", size = 6, parse = TRUE, nudge_x = 0.28) +
   geom_point(aes(x = "E16", y = mu.hat[1,2]), size=3, shape=1, colour='black') +
   geom_point(aes(x = "E16", y = mu.hat[2,2]), size=3, shape=1, colour='black') +
-  geom_point(aes(x = "4W", y = mu.hat[3,2]), size=3, shape=1, colour='black') +
-  geom_point(aes(x = "4W", y = mu.hat[4,2]), size=3, shape=1, colour='black')
+  geom_point(aes(x = "P28", y = mu.hat[3,2]), size=3, shape=1, colour='black') +
+  geom_point(aes(x = "P28", y = mu.hat[4,2]), size=3, shape=1, colour='black')
 ```
 
 $$\mu_1=E[Y_{(WT,E16)}]$$ 
 $$\mu_2=E[Y_{(NrlKO,E16)}]$$
-$$\mu_3=E[Y_{(WT,4W)}]$$
-$$\mu_4=E[Y_{(NrlKO,4W)}]$$
+$$\mu_3=E[Y_{(WT,P28)}]$$
+$$\mu_4=E[Y_{(NrlKO,P28)}]$$
 
 ### Reference-treatment effect parametrization
 
@@ -125,26 +127,26 @@ By default, `lm` assumes a <font color = "red">**reference-treatment effect**</f
 
 ### Mathematically (a bit more difficult...)
 
-$$Y_{ijk}=\theta + \tau_{KO} x_{KO,ijk}+ \tau_{4W}  x_{4W,ijk}+ \tau_{KO:4W}  x_{KO,ijk} x_{4W,ijk}+ \varepsilon_{ijk}$$
-Subscripts: $i$ indexes samples per group, $j=\{WT, NrlKO\}$, $k=\{E16, 4W\}$  
+$$Y_{ijk}=\theta + \tau_{KO} x_{KO,ijk}+ \tau_{P28}  x_{P28,ijk}+ \tau_{KO:P28}  x_{KO,ijk} x_{P28,ijk}+ \varepsilon_{ijk}$$
+Subscripts: $i$ indexes samples per group, $j=\{WT, NrlKO\}$, $k=\{E16, P28\}$  
 
-The names of these parameters and variables look overwhelming but think of them as just names for:
+The names of these parameters and variables may look overwhelming but it helps to think of them as just names for:
 
 > $x_{KO,ijk}$: a indicator variable with value 1 for NrlKO genotype samples (any sample with j=NrlKO), and 0 otherwise. I call this variable $x_{KO}$
 
-> $x_{4W,ijk}$: a different indicator variable with value 1 for 4W  samples (any sample with k=4W), and 0 otherwise. I call this variable $x_{4W}$
+> $x_{P28,ijk}$: a different indicator variable with value 1 for P28  samples (any sample with k=P28), and 0 otherwise. I call this variable $x_{P28}$
 
-> $\tau_{KO}$, $\tau_{4W}$, and $\tau_{KO:4W}$: parameters to model the *simple* effects of genotype (NrlKO), development (4W), and their interaction
+> $\tau_{KO}$, $\tau_{P28}$, and $\tau_{KO:P28}$: parameters to model the *simple* effects of genotype (NrlKO), development (P28), and their interaction
 
-**Note**: in this "simple" version with 2 levels per factor we need only one indicator variable per factor: $x_{KO}$ and $x_{4W}$. But this model can be extended to multiple factors with multiple levels. You just need to add more indicator variables!
+**Note**: in this "simple" version with 2 levels per factor we need only one indicator variable per factor: $x_{KO}$ and $x_{P28}$. But this model can be extended to multiple factors with multiple levels. You just need to add more indicator variables!
 
 ### Reference: WT & E16
 
 As before, comparisons are relative to a reference but now we have reference levels in both factors: **E16** and **WT**
 
-$$Y_{ijk}=\theta + \tau_{KO}  x_{KO,ijk}+ \tau_{4W}  x_{4W,ijk}+ \tau_{KO:4W}  x_{KO,ijk} x_{4W,ijk}+ \varepsilon_{ijk}$$
+$$Y_{ijk}=\theta + \tau_{KO}  x_{KO,ijk}+ \tau_{P28}  x_{P28,ijk}+ \tau_{KO:P28}  x_{KO,ijk} x_{P28,ijk}+ \varepsilon_{ijk}$$
   
-For any sample $i$ in the reference group: $j=WT$ and $k=E16$, then $x_{KO}=0$ and $x_{4W}=0$ (I'm omiting subscripts for clarity). Then only $\theta$ remains and we get:  $$E[Y_{WT,E16}]=\theta$$
+For any sample $i$ in the reference group: $j=WT$ and $k=E16$, then $x_{KO}=0$ and $x_{P28}=0$ (I'm omiting subscripts for clarity). Then only $\theta$ remains and we get:  $$E[Y_{WT,E16}]=\theta$$
 
 as before $\theta$ is the mean of the reference group 
 
@@ -158,11 +160,11 @@ p1 +
   geom_point(aes(x = 1, y = mu.hat[1,2]), size=3, shape=1, colour='black')
 ```
 
-Here is the `lm` output (the `coeff`) table for the two factor fit.
+Here is the `lm` output table for the two factor fit (extracted using `broom::tidy()`).
 
 ```{r,tidy.opts=list(width.cutoff=40)}
 twoFactFit <- lm(expression ~ genotype * dev_stage, oneGene)
-summary(twoFactFit)$coeff
+tidy(twoFactFit)
 ```
 
 Notice that the **`lm` estimate**, $\hat{\theta}$, is the sample mean of the reference group (WT E16). 
@@ -172,28 +174,30 @@ Notice that the **`lm` estimate**, $\hat{\theta}$, is the sample mean of the ref
           summarize(cellMeans = mean(expression)) %>%
           ungroup() %>%
           mutate(txEffects = cellMeans - cellMeans[1],
-                 lmEst = as.vector(summary(twoFactFit)$coeff[,1])))
+                 lmEst = tidy(twoFactFit)$estimate))
 ```
 To show this explicitly, we pull out the  `lm` estimate for the reference group (WT E16):
 ```{r}
-means.2Fact %>% filter(dev_stage == "E16" & genotype == "WT") %>%
+means.2Fact %>% 
+  filter(dev_stage == "E16" & genotype == "WT") %>%
   pull(lmEst)
 ```
 
 And now the sample mean of the reference group (WT E16):
 
 ```{r}
-means.2Fact %>% filter(dev_stage == "E16" & genotype == "WT") %>%
+means.2Fact %>%
+  filter(dev_stage == "E16" & genotype == "WT") %>%
   pull(cellMeans)
 ```
 
 ### *Simple* genotype effect: WT *vs* NrlKO <font color="blue"> at E16 </font>
 
-$$Y_{ijk}=\theta + \tau_{KO}  x_{KO,ijk}+ \tau_{4W}  x_{4W,ijk}+ \tau_{KO:4W}  x_{KO,ijk} x_{4W,ijk}+ \varepsilon_{ijk}$$
+$$Y_{ijk}=\theta + \tau_{KO}  x_{KO,ijk}+ \tau_{P28}  x_{P28,ijk}+ \tau_{KO:P28}  x_{KO,ijk} x_{P28,ijk}+ \varepsilon_{ijk}$$
   
-For any WT sample at E16: $x_{KO}=0$ and $x_{4W}=0$. Then <font color="red"> $E[Y_{WT,E16}]=\theta$ </font>
+For any WT sample at E16: $x_{KO}=0$ and $x_{P28}=0$. Then <font color="red"> $E[Y_{WT,E16}]=\theta$ </font>
   
-For any KO sample at E16: $x_{KO}=1$ and $x_{4W}=0$. Then <font color="red"> $E[Y_{NrlKO,E16}]=\theta + \tau_{KO}$ </font>
+For any KO sample at E16: $x_{KO}=1$ and $x_{P28}=0$. Then <font color="red"> $E[Y_{NrlKO,E16}]=\theta + \tau_{KO}$ </font>
   
 Substracting these expectations we get $\tau_{KO}$, the *conditional* genotype effect <font color="blue"> at E16 </font>: 
   
@@ -209,71 +213,75 @@ p1 +
   geom_point(aes(x = "E16", y = mu.hat[2,2]), 
              size = 3, shape = 1, colour = 'black', alpha = 0.5) +
   geom_segment(aes(x = 0.96, y=mu.hat[1,2], xend = 0.96, yend = mu.hat[2,2]),
-               colour = 1, arrow = arrow(length = unit(0.1,"in")), size = 0.75) 
+               colour = 1, arrow = arrow(length = unit(0.1,"in")), linewidth = 0.75) 
 ```
 
 And its **`lm` estimate**, $\hat{\tau}_{KO}$, is the *difference* of sample respective means.
 
 To show this explicitly, we pull out the  `lm` estimate for the KO effect (diff between E16:NrlKO and E16:WT):
 ```{r}
-means.2Fact %>% filter(dev_stage == "E16" & genotype == "NrlKO") %>%
+means.2Fact %>% 
+  filter(dev_stage == "E16" & genotype == "NrlKO") %>%
   pull(lmEst)
 ```
 
 And now the differences in sample means between the E16:NrlKO group and the reference group (WT E16):
 
 ```{r}
-means.2Fact %>% filter(dev_stage == "E16" & genotype == "NrlKO") %>%
+means.2Fact %>% 
+  filter(dev_stage == "E16" & genotype == "NrlKO") %>%
   pull(txEffects)
 ```
 
-### *Simple* developmental effect: E16 *vs* 4W <font color="blue"> in WT </font>
+### *Simple* developmental effect: E16 *vs* P28 <font color="blue"> in WT </font>
 
-$$Y_{ijk}=\theta + \tau_{KO}  x_{KO,ijk}+ \tau_{4W}  x_{4W,ijk}+ \tau_{KO:4W}  x_{KO,ijk} x_{4W,ijk}+ \varepsilon_{ijk}$$
+$$Y_{ijk}=\theta + \tau_{KO}  x_{KO,ijk}+ \tau_{P28}  x_{P28,ijk}+ \tau_{KO:P28}  x_{KO,ijk} x_{P28,ijk}+ \varepsilon_{ijk}$$
   
-For any WT sample at E16: $x_{KO}=0$ and $x_{4W}=0$. Then <font color="red"> $E[Y_{WT,E16}]=\theta$ </font>
+For any WT sample at E16: $x_{KO}=0$ and $x_{P28}=0$. Then <font color="red"> $E[Y_{WT,E16}]=\theta$ </font>
   
-For any WT sample at 4W: $x_{KO}=0$ and $x_{4W}=1$. Then <font color="red"> $E[Y_{WT,4W}]=\theta + \tau_{4W}$ </font>
+For any WT sample at P28: $x_{KO}=0$ and $x_{P28}=1$. Then <font color="red"> $E[Y_{WT,P28}]=\theta + \tau_{P28}$ </font>
   
-Substracting these expectations we get $\tau_{4W}$, the *conditional* development effect <font color="blue"> in WT </font>: 
+Substracting these expectations we get $\tau_{P28}$, the *conditional* development effect <font color="blue"> in WT </font>: 
   
-$$\tau_{4W}=E[Y_{WT,4W}]-E[Y_{WT,E16}]$$
+$$\tau_{P28}=E[Y_{WT,P28}]-E[Y_{WT,E16}]$$
 
 
 ```{r,echo=FALSE, fig.height= 2.5, fig.width = 5, fig.align='center'}
 p1 +
 #parameter and segments
   geom_text(aes(x = 2.3, y = abs(mu.hat[1,2]+mu.hat[3,2])/2, 
-                label = TeX("$\\widehat{\\tau}_{4W}$", output = "character")), 
+                label = TeX("$\\widehat{\\tau}_{P28}$", output = "character")), 
             colour = "black", size = 6, parse = TRUE) + 
   geom_segment(aes(x=2.1,y=mu.hat[1,2],xend=2.1,yend=mu.hat[3,2]),colour=1,
-               arrow = arrow(length = unit(0.1,"in")), size = 0.75) + 
+               arrow = arrow(length = unit(0.1,"in")), linewidth = 0.75) + 
   geom_segment(aes(x = 1, y = mu.hat[1,2], xend = 2, yend = mu.hat[1,2]), 
-               colour = 'darkgrey', linetype = 2, size = 0.75) +
+               colour = 'darkgrey', linetype = 2, linewidth = 0.75) +
   #circles around mean
   geom_point(aes(x = 1, y = mu.hat[1,2]), size = 3, shape = 1, colour = 'black') +
   geom_point(aes(x = 2, y = mu.hat[3,2]), size = 3, shape = 1, colour = 'black') 
 ```
 
-And its **`lm` estimate**, $\hat{\tau}_{4W}$, is the *difference* of respective sample means.
+And its **`lm` estimate**, $\hat{\tau}_{P28}$, is the *difference* of respective sample means.
 
 
-To show this explicitly, we pull out the  `lm` estimate for the 4W effect (diff between 4W:WT and E16:WT):
+To show this explicitly, we pull out the  `lm` estimate for the P28 effect (diff between P28:WT and E16:WT):
 ```{r}
-means.2Fact %>% filter(dev_stage == "4W" & genotype == "WT") %>%
+means.2Fact %>% 
+  filter(dev_stage == "P28" & genotype == "WT") %>%
   pull(lmEst)
 ```
 
 And now the differences in sample means between the E16:NrlKO group and the reference group (WT E16):
 
 ```{r}
-means.2Fact %>% filter(dev_stage == "4W" & genotype == "WT") %>%
+means.2Fact %>% 
+  filter(dev_stage == "P28" & genotype == "WT") %>%
   pull(txEffects)
 ```
 
 ### Interaction effect
 
-Can we simply add up the simple effect of genotype NrlKO, and the simple effect of developmental stage 4W, to get the effect at 4W in NrlKO?? If so, we'd expect the 4W:NrlKO group to have a mean predicted by the dotted grey line (i.e.**that the effect of KO is the same at E16 as it is at 4W**:
+Can we simply add up the simple effect of genotype NrlKO, and the simple effect of developmental stage P28, to get the effect at P28 in NrlKO?? If so, we'd expect the P28:NrlKO group to have a mean predicted by the dotted grey line (i.e.**that the effect of KO is the same at E16 as it is at P28**:
 
 ```{r,echo=FALSE, fig.height= 2.5, fig.width = 5, fig.align='center'}
 mu.add <- mu.hat[3,2] - (mu.hat[1,2] - mu.hat[2,2])
@@ -287,11 +295,11 @@ p1.itx  <- p1 +
     #parameters and segments
   #additive position
     geom_segment(aes(x = 1, y = mu.hat[2,2], xend = 2, yend = mu.add), 
-                 colour='grey', linetype = 2, size = 0.75)+
-  #tau_4W
+                 colour='grey', linetype = 2, linewidth = 0.75)+
+  #tau_P28
     geom_segment(aes(x = 2.1, y = mu.hat[3,2], xend = 2.1, yend = mu.add),
                  colour = 'grey', arrow = arrow(length = unit(0.1,"in")),
-                 size = 0.75) +
+                 linewidth = 0.75) +
     geom_text(aes(x = 2.3, y = abs(mu.hat[3,2]+mu.add)/2, 
                   label = TeX("$\\widehat{\\tau}_{KO}$", output = "character")),
               colour = 'grey', size = 6, parse = TRUE) 
@@ -300,13 +308,13 @@ p1.itx
 
 We see that this does not seem to be the case. This is where the **interaction** effect comes in. Let's see what it means mathematically.
 
-$$Y_{ijk}=\theta + \tau_{KO}  x_{KO,ijk}+ \tau_{4W}  x_{4W,ijk}+ \tau_{KO:4W}  x_{KO,ijk} x_{4W,ijk}+ \varepsilon_{ijk}$$
+$$Y_{ijk}=\theta + \tau_{KO}  x_{KO,ijk}+ \tau_{P28}  x_{P28,ijk}+ \tau_{KO:P28}  x_{KO,ijk} x_{P28,ijk}+ \varepsilon_{ijk}$$
   
-For any KO sample at 4W: $x_{KO}=1$ and $x_{4W}=1$. Then <font color="red"> $E[Y_{NrlKO,4W}]=\theta + \tau_{KO} + \tau_{4W} + \tau_{KO:4W}$ </font>
+For any KO sample at P28: $x_{KO}=1$ and $x_{P28}=1$. Then <font color="red"> $E[Y_{NrlKO,P28}]=\theta + \tau_{KO} + \tau_{P28} + \tau_{KO:P28}$ </font>
   
 Using the expectations from above, you can show that:
 
-$$\tau_{KO:4W}= (E[Y_{NrlKO,4W}]-E[Y_{WT,4W}]) - (E[Y_{NrlKO,E16}]-E[Y_{WT,E16}]) $$
+$$\tau_{KO:P28}= (E[Y_{NrlKO,P28}]-E[Y_{WT,P28}]) - (E[Y_{NrlKO,E16}]-E[Y_{WT,E16}]) $$
 
 This term is represented by the blue arrow:
 
@@ -319,15 +327,16 @@ p1.itx +
                  colour = 'blue', arrow = arrow(length = unit(0.1,"in")),
                  size = 0.75) +
     geom_text(aes(x = 2.36, y = abs(mu.hat[4,2] + mu.add)/2, 
-                  label = TeX("$\\widehat{\\tau}_{KO{:}4W}$", output = "character")),
+                  label = TeX("$\\widehat{\\tau}_{KO{:}P28}$", output = "character")),
               colour = "blue", size = 6, parse = TRUE)
 ```
 
-And its **`lm` estimate**, $\hat{\tau}_{KO:4W}$, is the *difference of the differences* between NrlKO and WT at each developmental stage.
+And its **`lm` estimate**, $\hat{\tau}_{KO:P28}$, is the *difference of the differences* between NrlKO and WT at each developmental stage.
 
 To show this explicitly, we pull out the  `lm` estimate for the interaction effect:
 ```{r}
-means.2Fact %>% filter(dev_stage == "4W" & genotype == "NrlKO") %>%
+means.2Fact %>% 
+  filter(dev_stage == "P28" & genotype == "NrlKO") %>%
   pull(lmEst)
 ```
 
@@ -336,10 +345,10 @@ And now the differences in sample means between the E16:NrlKO group and the refe
 ```{r}
 mean.E16.WT <- means.2Fact %>% filter(dev_stage == "E16" & genotype == "WT") %>% pull(cellMeans)
 mean.E16.KO <- means.2Fact %>% filter(dev_stage == "E16" & genotype == "NrlKO") %>% pull(cellMeans)
-mean.4W.WT <- means.2Fact %>% filter(dev_stage == "4W" & genotype == "WT") %>% pull(cellMeans)
-mean.4W.KO <- means.2Fact %>% filter(dev_stage == "4W" & genotype == "NrlKO") %>% pull(cellMeans)
+mean.P28.WT <- means.2Fact %>% filter(dev_stage == "P28" & genotype == "WT") %>% pull(cellMeans)
+mean.P28.KO <- means.2Fact %>% filter(dev_stage == "P28" & genotype == "NrlKO") %>% pull(cellMeans)
 
-(mean.4W.KO - mean.4W.WT) - (mean.E16.KO - mean.E16.WT) 
+(mean.P28.KO - mean.P28.WT) - (mean.E16.KO - mean.E16.WT) 
 ```
 
 ## Two-way ANOVA without interaction: additive models
@@ -348,31 +357,31 @@ The interpretation of the coefficients changed when we drop the interaction term
 
 ### Mathematically
 
-$$Y_{ijk}=\theta + \tau_{KO}  x_{KO,ijk}+ \tau_{4W}  x_{4W,ijk} + \varepsilon_{ijk}$$
+$$Y_{ijk}=\theta + \tau_{KO}  x_{KO,ijk}+ \tau_{P28}  x_{P28,ijk} + \varepsilon_{ijk}$$
 Note that this model is simpler and it has fewer parameters! but what do these mean?
 
 As before, let's look at the expectations of each group:
 
-- for any sample $i$ with $j=WT$ and $k=E16$: $x_{KO}=0$ and $x_{4W}=0$ (only $\theta$ remains):  $$E[Y_{WT,E16}]=\theta$$
+- for any sample $i$ with $j=WT$ and $k=E16$: $x_{KO}=0$ and $x_{P28}=0$ (only $\theta$ remains):  $$E[Y_{WT,E16}]=\theta$$
 
-- for any sample $i$ with $j=WT$ and $k=4W$: $x_{KO}=0$ and $x_{4W}=1$:  $$E[Y_{WT,4W}]=\theta + \tau_{4W}$$
+- for any sample $i$ with $j=WT$ and $k=P28$: $x_{KO}=0$ and $x_{P28}=1$:  $$E[Y_{WT,P28}]=\theta + \tau_{P28}$$
 
-- for any sample $i$ with $j=NrlKO$ and $k=E16$: $x_{KO}=1$ and $x_{4W}=0$:  $$E[Y_{KO,E16}]=\theta + \tau_{KO}$$
+- for any sample $i$ with $j=NrlKO$ and $k=E16$: $x_{KO}=1$ and $x_{P28}=0$:  $$E[Y_{KO,E16}]=\theta + \tau_{KO}$$
 
-- for any sample $i$ with $j=NrlKO$ and $k=4W$: $x_{KO}=1$ and $x_{4W}=1$:  $$E[Y_{KO,4W}]=\theta + \tau_{KO} + \tau_{4W}$$
+- for any sample $i$ with $j=NrlKO$ and $k=P28$: $x_{KO}=1$ and $x_{P28}=1$:  $$E[Y_{KO,P28}]=\theta + \tau_{KO} + \tau_{P28}$$
 
 After some simple algebra, you get:
 
-$$(E[Y_{WT,4W}]-E[Y_{WT,E16}]) + (E[Y_{KO,4W}]-E[Y_{KO,E16}]) = 2 \tau_{4W}$$
+$$(E[Y_{WT,P28}]-E[Y_{WT,E16}]) + (E[Y_{KO,P28}]-E[Y_{KO,E16}]) = 2 \tau_{P28}$$
 
 Then,
 
-$$\tau_{4W}= (\text{Eff}_{4W|WT} + \text{Eff}_{4W|KO})/2$$
-is the average effect of 4W over the levels of `genotype`!!
+$$\tau_{P28}= (\text{Eff}_{P28|WT} + \text{Eff}_{P28|KO})/2$$
+is the average effect of P28 over the levels of `genotype`!!
 
 Similar for the other *main effect*. 
 
-The intercept parameter is now $\bar{Y} - \bar{x}_{ij,KO}\hat{\tau}_{KO} - \bar{x}_{ij,4W}\hat{\tau}_{4W}$
+The intercept parameter is now $\bar{Y} - \bar{x}_{ij,KO}\hat{\tau}_{KO} - \bar{x}_{ij,P28}\hat{\tau}_{P28}$
 
 ## Some additional examples
 
@@ -399,16 +408,17 @@ plot1Lim <- ggplot(oneGene, aes(x = dev_stage, y = expression, group=genotype, c
              ylim(5.5, 8) +  stat_summary(aes(group=genotype,colour=genotype), fun.y=mean, geom="line",size=1.5) +
   scale_color_manual(values = c('WT' = '#00BFC4', 'NrlKO' = '#F8766D'))+
   #geom_segment(aes(x=1,y=mu.hat1[3,2],xend=1,yend=mu.hat1[1,2]),colour=1,arrow = arrow(length = unit(0.1,"cm")))+
-  geom_segment(aes(x=1,y=mu.hat1[1,2],xend=1,yend=mu.hat1[3,2]),colour=1,arrow = arrow(length = unit(0.1,"cm")))+ #other way for double arrow??
-  geom_segment(aes(x=1,y=mu.hat1[3,2],xend=2,yend=mu.hat1[3,2]),colour='grey',linetype=2)
+  geom_segment(aes(x=1,y=mu.hat1[1,2],xend=1,yend=mu.hat1[3,2]),
+               colour=1,arrow = arrow(length = unit(0.1,"cm")))+ #other way for double arrow??
+  geom_segment(aes(x=1,y=mu.hat1[3,2],xend=2,yend=mu.hat1[3,2]),
+               colour='grey',linetype=2)
 plot1Lim
 ```
 
 ```{r,echo=FALSE}
 multFit <- lm(expression ~ genotype * dev_stage, oneGene)
-summary(multFit)$coeff
+tidy(multFit)
 ```
-
 
 Again, the interaction effect is not significant, so there may be a development effect *regardless* of the genotype. Or likewise a genotype effect *regardless* of developmental stage. We need to test those hypotheses (main effects) using `anova` 
 
@@ -443,7 +453,7 @@ plot1Lim
 
 ```{r,echo=FALSE,highlight.output = c(3:5),warning=FALSE}
 multFit <- lm(expression ~ genotype * dev_stage, data = oneGene)
-summary(multFit)$coef
+tidy(multFit)
 ```
 
 Note that the main effects for both are also significant (but not the interaction).
