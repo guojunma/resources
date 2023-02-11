@@ -10,9 +10,9 @@ output:
 
 # Introduction
 
-This file provides code, context and additional information related to the STAT540 lectures on RNA-seq analysis.
+This file provides code, context and additional information related to the STAT540 lecture on RNA-seq analysis.
 
-Among other things it shows how to run differential expression analysis on RNA-seq data sets using a variety of methods. We'll get a sense at how the results differ across methods, though obviously doing this on a single data set is not a real evaluation. The example data set is the same "Gompers" Chd8 mutant data set we used for lecture 3 ("exploration"). 
+Among other things it shows how to run differential expression analysis on RNA-seq data sets using a variety of methods. We'll get a sense at how the results differ across methods, though obviously doing this on a single data set is not a real evaluation. The example data set is the same "Gompers" Chd8 mutant data set we introduced in lecture 1.
 
 # Setup
 
@@ -28,6 +28,7 @@ install("pheatmap")
 install("qvalue")
 install("GGally")
 install("UpSetR")
+install("statmod")
 ```
 
 Next, we'll load these libraries and set some plotting defaults.
@@ -39,7 +40,7 @@ library(limma)
 library(DESeq2)
 library(edgeR)
 library(pheatmap)
-library(qvalue)
+library(qvalue) 
 library(GGally)
 library(UpSetR)
 
@@ -53,11 +54,13 @@ theme_update(panel.grid.major = element_blank(), panel.grid.minor = element_blan
 
 ## Loading and preparing data
 
-We will use the same dataset as we used in the [exploratory data analysis lecture](https://stat540-ubc.github.io/lectures/lectures_2021/lect03-eda.html#1), which was also explored in the [companion document](https://github.com/STAT540-UBC/STAT540-UBC.github.io/blob/master/examples/exploration-examples/explore.md). This is the data from [Gompers et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/28671691), that is available on GEO, at [Accession GSE99331](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE99331). However, note that this data is only available as RPKM values, *not* raw counts. As raw counts are preferable for differential expression analysis, Paul obtained these counts directly from the authors in Jan 2018. 
+We will use the same dataset as introduced in [lecture 1](https://stat540-ubc.github.io/lectures/lectures_2021/lect03-eda.html#1). This is the data from [Gompers et al., 2017](https://www.ncbi.nlm.nih.gov/pubmed/28671691), that is available on GEO, at [Accession GSE99331](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE99331). However, note that this data is only publicly available as RPKM values, *not* raw counts. As raw counts are preferable for differential expression analysis, Paul Pavlidis obtained these counts directly from the authors in Jan 2018. If you'd like to get more acquainted with this dataset before proceeding, here is a [markdown document going over some preliminary EDA](https://github.com/STAT540-UBC/STAT540-UBC.github.io/blob/master/examples/exploration-examples/explore.md).
 
-Note that we are using a corrected version of the meta-data obtained from the authors that fixes the miscoded sex for P0 animals.
+Notes:
 
-As in the lecture 3 example, following the nomenclature of the authors, "Group" indicates the Chd8 genotype (wild type or heterozygous mutant), "DPC" indicates "Days post conception" (developmental stage).
+* we are using a corrected version of the meta-data obtained from the authors that fixes the miscoded sex for P0 animals
+
+* following the nomenclature of the authors, "Group" indicates the Chd8 genotype (wild type or heterozygous mutant), "DPC" indicates "Days post conception" (developmental stage)
 
 First, we'll read in the metadata, and recode the categorical variables as factors with meaningful levels - so we don't have to remember whether `Sex = 1` refers to male or female.
 
@@ -194,7 +197,7 @@ Now we can see that the raw counts are in the `counts` slot and CPM are in the `
 Next, we'll create a filter for lowly expressed genes. Specifically, we'll use the threshold used by the authors: only keep genes with at least 2 samples that have CPM greater than 10. 
 
 ```{r}
-keep <- which(rowSums(assays(sumexp)$cpm > 10) > 2)
+keep <- which(rowSums(assays(sumexp)$cpm > 10) >= 2)
 length(keep)  
 
 sumexp <- sumexp[keep,]
@@ -249,9 +252,10 @@ In this section we'll use the base `lm` approach on log2(CPM + 1). In the next s
 
 We are just going to keep all the results from the different runs in a data frame so we can compare them later (just the p-values for "Group").
 
-Note: The `limma` package fits linear models efficiently _en masse_, but then adds other features that we want to see the effect of, while still using the rest of the limma workflow (e.g. `topTable`). To do so we need to turn off the extras (specifically variance shrinkage and degrees of freedom adjustment), but `limma` does not provide any built-in way to do that. Therefore, I provide some code that lets you use the usual limma workflow, but without the bells and whistles; I call it `noBayes` to replace `eBayes`. In using `noBayes` we don't get the `B` statistic so you have to specify `sort.by = "p"` in the call to `topTable`, since `sort.by="B"` is the default when examining single coefficients.
+Note: The `limma` package fits linear models efficiently _en masse_, but then adds other features that we want to see the effect of, while still using the rest of the limma workflow (e.g. `topTable`). To do so we need to turn off the extras (specifically variance shrinkage and degrees of freedom adjustment), but `limma` does not provide any built-in way to do that. Therefore, I provide [some code](https://github.com/STAT540-UBC/resources/blob/main/rnaseqdiffex-examples/noBayes.R) that lets you use the usual limma workflow, but without the bells and whistles; I call it `noBayes` to replace `eBayes`. Essentially, it hacks the `limma` output and replaces the moderated results with the standard `lm` results so that we can operate onit with `topTable`. In using `noBayes` we don't get the `B` statistic so you have to specify `sort.by = "p"` in the call to `topTable`, since `sort.by="B"` is the default when examining single coefficients.
 
 ```{r regularlm}
+# run the function to hack the limma output to be lm output 
 source("noBayes.R")
 lmlogcpm <- lmFit(assays(sumexp)$log2cpm, design = modm)
 lmlogcpm <- noBayes(lmlogcpm) 
@@ -260,9 +264,9 @@ lmlogcpm <- noBayes(lmlogcpm)
 We'll print the top 10 genes by `lm` for the Sex, Group, and DPC covariates, then save the results for Group in the dataframe we'll add other results to.
 
 ```{r}
-signif(topTable(lmlogcpm, number = 10, coef = "SexF", sort.by = "p"), 3)   # sex
-signif(topTable(lmlogcpm, number = 10, coef = "GroupMu", sort.by = "p"), 3)   # group
-signif(topTable(lmlogcpm, number =10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")), 3) # DPC
+topTable(lmlogcpm, number = 10, coef = "SexF", sort.by = "p")  # sex
+topTable(lmlogcpm, number = 10, coef = "GroupMu", sort.by = "p")  # group
+topTable(lmlogcpm, number =10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")) # DPC
 
 # Start to collect the data from the different methods.
 difmethods <- data.frame(row.names = row.names(sumexp))
@@ -278,9 +282,9 @@ limmalogcpm <- lmFit(assays(sumexp)$log2cpm, design = modm)
 limmalogcpm <- eBayes(limmalogcpm)
 plotSA(limmalogcpm, main = "Default limma")
 
-signif(topTable(limmalogcpm, number = 10, coef = "SexF", sort.by = "p"), 3)   # sex
-signif(topTable(limmalogcpm, number = 10, coef = "GroupMu", sort.by = "p"), 3)   # group
-signif(topTable(limmalogcpm, number =10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")), 3) # DPC
+topTable(limmalogcpm, number = 10, coef = "SexF", sort.by = "p")  # sex
+topTable(limmalogcpm, number = 10, coef = "GroupMu", sort.by = "p")   # group
+topTable(limmalogcpm, number =10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")) # DPC
 
 difmethods$limmalogcpm <- topTable(limmalogcpm, number = Inf, coef = "GroupMu", 
                                    sort.by = "none")$P.Value
@@ -297,9 +301,9 @@ limmalogcpm$df.prior
 
 ### Bonus topic: P-value distribution
 
-Not specifically related to RNA-seq. An essential diagnostic after doing this kind of statistical analysis is to examine the distribution of the p-values, because those p-values are used to estimate false discovery rates, which in turn depend on p-values following some sort of expected behaviour.
+An essential diagnostic after doing this kind of statistical analysis (not exclusive to RNA-seq, but for any high-dimensional analysis) is to examine the distribution of the p-values, because those p-values are used to estimate false discovery rates, which in turn depend on p-values following some sort of expected behaviour.
 
-Options here include looking at p-value distributions (I recommend) or quantile-quantile plots of p-values. Quantile-quantile plots are also often used to examine test statistics.
+Options here include looking at p-value distributions (I recommend) or quantile-quantile plots of p-values. Quantile-quantile plots (not shown here) are also often used to examine test statistics.
 
 ```{r pvaluedists}
 hist(topTable(limmalogcpm, number = Inf, coef = "SexF")$P.Value, breaks=100, 
@@ -307,25 +311,15 @@ hist(topTable(limmalogcpm, number = Inf, coef = "SexF")$P.Value, breaks=100,
      main="Pval dist for 'Sex' (limma on logcpm)")
 hist(topTable(limmalogcpm, number = Inf, coef = "GroupMu")$P.Value, breaks=100, 
      xlab = "P-value",
-     main="Pval dist for 'Sex' (limma on logcpm)")
+     main="Pval dist for 'Group' (limma on logcpm)")
 hist(topTable(limmalogcpm, number = Inf, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77"))$P.Value,
      breaks=100, xlab = "P-value",
      main="Pval dist for 'DPC' (limma on logcpm)") 
-
-# Instead of using pvalue histrograms, you might see QQ-plots. Here it is for 'Sex' and 'Group' 
-psx <- topTable(limmalogcpm, number = Inf, coef = "SexF")$P.Value
-qqplot( -log10(qunif(1-psx)), -log10(psx) , ylim=c(0,50) , xlab="expected -log10p", ylab="observed -log10p", main="QQ p for Sex (limma on cpm)", pch=20, cex=0.5)
-abline(0,1, lty=3)
-
-ps <- topTable(limmalogcpm, number = Inf, coef = "GroupMu")$P.Value
-qqplot( -log10(qunif(1-ps)), -log10(ps) , ylim=c(0,15) , xlab="expected -log10p", ylab="observed -log10p", main="QQ p for Group (limma on cpm)", pch=20, cex=0.5)
-abline(0,1, lty=3)
-
 ```
 
-Compared to the histogram, the qq-plot gives a stronger impression of the deviation of the p-value distribution from the expected uniform throughout its range. The "inflation" we observe for the Chd8 genotype effect suggests *either* the effects of Chd8 are very widespread (biologically plausible) or there is a problem with our data/model resulting in inaccurate p-values (hard to know for certain, but the Sex statistics don't show this inflation).
+If we don't observe a relatively flat distribution for most of the range (in particular, apart from a possible spike of low p-values), this suggests there might be a problem with our data/model resulting in inaccurate p-values.
 
-Visualizing the p-value distributions you get a sense of how much of a "signal" there is, but this can be quantified using the `qvalue::qvalue()` method. The output `pi_0` is the estimated fraction of "true null hypotheses" while `1 - pi_0` or `pi_1` is the estimated (in this case) fraction of differentially expressed genes (with respect to the selected coefficients in the linear model we are fitting). This is useful, though wouldn't take these numbers too seriously, especially if your p-value distribution is at all "defective". You'll note that it breaks down if too many genes are differentially expressed so I don't show the call for the DPC analysis. 
+Visualizing the p-value distributions you get a sense of how much of a "signal" there is, but this can be quantified using the `qvalue::qvalue()` method. The output `pi_0` is the estimated fraction of "true null hypotheses" while `1 - pi_0` or `pi_1` is the estimated (in this case) fraction of differentially expressed genes (with respect to the selected coefficients in the linear model we are fitting). This is useful, though wouldn't take these numbers too seriously, especially if your p-value distribution is at all "defective". 
 
 ```{r pi0}
 # Check pi0 estimates from qvalue
@@ -334,18 +328,11 @@ Visualizing the p-value distributions you get a sense of how much of a "signal" 
 
 # For DPC, qvalue breaks because basically every gene is diff expr - basically 100%
 1 - qvalue(topTable(limmalogcpm, Inf, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77"))$P.Value)$pi0 
-
-# You can also use qvalue to generate some diagnostic plots, related to p-value
-# distributions and pi0
-plot(qvalue(topTable(limmalogcpm, Inf, coef = "GroupMu")$P.Value))
 ```
-
-For brevity's sake I'm not going to show the full p-value histograms and qvalue analyses for each of the analyses.
-
 
 ## Using limma-trend
 
-Limma-trend is a modification to the standard limma approach that incorporates mean expression level as a covariate into the prior hyperparameter estimation. Its goal is to adjust for any mean-variance relationship still leftover after transformation using log CPM. Limma-trend is robust (according to the user manual) if the sequencing depth is "reasonably consistent" across samples (less than 3-fold range, which is not quite the case here - see below). Though it's worth noting that in the original voom paper, voom was a bit better than 'trend'. The way limma-trend works is the mean expression level is used as a covariate in the prior hyperparameter estimation.
+Here we start to get into the mean-variance relationships and how they can be addressed. Limma-trend is a modification to the standard limma approach that incorporates mean expression level as a covariate into the prior hyperparameter estimation. Its goal is to adjust for any mean-variance relationship still leftover after transformation using log CPM. If we *don't* do this, we may be shrinking some genes too much, or too little, depending on their variance levels. Limma-trend is robust if the sequencing depth is "reasonably consistent" across samples (according to the user manual, less than 3-fold range, which is not quite the case here - see below). The way limma-trend works is the mean expression level is used as a covariate in the prior hyperparameter estimation.
 
 ```{r limmatrend}
 # note that the maximum depth is more than 4-fold higher than the minimum
@@ -359,16 +346,17 @@ plotSA(limmatrend, main = "limma-trend")
 We can see the mean-variance trend estimated by limma-trend in the blue line. Next we'll examine the top ten genes by Sex, Group and DPC, as well as add the p-values for Group for the limma-trend approach to our data frame of results.
 
 ```{r}
-signif(topTable(limmatrend, number = 10, coef = "SexF", sort.by = "p") ,3)
-signif(topTable(limmatrend, number = 10, coef = "GroupMu", sort.by = "p") ,3)
-signif(topTable(limmatrend, number = 10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")),3)
+topTable(limmatrend, number = 10, coef = "SexF", sort.by = "p") 
+topTable(limmatrend, number = 10, coef = "GroupMu", sort.by = "p") 
+topTable(limmatrend, number = 10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77"))
 
+# add limma trend results to master results table
 difmethods$limmatrend <- topTable(limmatrend, number = Inf, coef = "GroupMu", sort = "none")$P.Value 
 ```
 
 ## Using limma-voom
 
-Now we introduce the weighted regression method suggested by the limma developers to utilize the raw counts (instead of using log-transformed CPM values). Here we start to get into the mean-variance relationships (a form of heteroscedasticity) and how it can be addressed. 
+Now we introduce the weighted regression method suggested by the limma developers to utilize the raw counts (instead of using log-transformed CPM values) - this is called voom. It's worth noting that in the original voom paper, voom was a bit better than 'trend'.
 
 Note that we are using the `counts` slot of `assays(sumexp)` now instead of the `log2cpm` slot.
 
@@ -390,10 +378,11 @@ With the limma-voom adjustment, we see the trend between mean and variance is la
 Now we'll look at the top 10 signficant for Sex, Group, and DPC, and add the p-values for the Group coefficient to our comparison table. 
 
 ```{r}
-signif(topTable(lmvoom, number = 10, coef = "SexF", sort.by = "p") ,3)
-signif(topTable(lmvoom, number = 10, coef = "GroupMu", sort.by = "p") ,3)
-signif(topTable(lmvoom, number = 10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")),3)
+topTable(lmvoom, number = 10, coef = "SexF", sort.by = "p") 
+topTable(lmvoom, number = 10, coef = "GroupMu", sort.by = "p") 
+topTable(lmvoom, number = 10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77"))
 
+# add limma voom results to master results table
 difmethods$limmavoom <- topTable(lmvoom, number = Inf, coef = "GroupMu", sort = "none")$P.Value 
 ```
 
@@ -410,10 +399,11 @@ limmavoomTMM <- lmFit(vwn, modm)
 limmavoomTMM <- eBayes(limmavoomTMM)
 plotSA(limmavoomTMM, main= "limma voom + TMM")
 
-signif(topTable(limmavoomTMM, number = 10, coef = "SexF", sort.by = "p") ,3)
-signif(topTable(limmavoomTMM, number = 10, coef = "GroupMu", sort.by = "p") ,3)
-signif(topTable(limmavoomTMM, number = 10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")),3)
+topTable(limmavoomTMM, number = 10, coef = "SexF", sort.by = "p") 
+topTable(limmavoomTMM, number = 10, coef = "GroupMu", sort.by = "p") 
+topTable(limmavoomTMM, number = 10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77"))
 
+# add limma voom with TMM results to master results table
 difmethods$limmavoomTMM <- topTable(limmavoomTMM, number = Inf, coef = "GroupMu", 
                                     sort = "none")$P.Value 
 ```
@@ -432,6 +422,7 @@ dge <- calcNormFactors(dge, method="TMM")
 
 hist(dge$samples$norm.factors, breaks = 10, xlab = "Norm factor", main = "TMM Normalization factors")
 ```
+
 The TMM normalization factors are values approximately centered at 1. Values less than 1 indicate that high-count genes are monopolizing the "read space". Note that if we have a large fraction (i.e. greater than 50%) differentially expressed genes, this violates the assumptions of normalization methods like TMM. 
 
 We proceed by first estimating dispersions (recall that these are analogous to the gene-specific variances in limma), and plotting these estimates using the `plotBCV` function.
@@ -452,10 +443,11 @@ These estimates will be used in fitting the LRT model, which we'll do using the 
 ```{r}
 lfit <- glmFit(dge, modm)
 
-topTags(glmLRT(lfit, coef = "SexF"))$table %>% signif(3)
-topTags(glmLRT(lfit, coef = "GroupMu"))$table %>% signif(3)
-topTags(glmLRT(lfit, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")))$table %>% signif(3)
+topTags(glmLRT(lfit, coef = "SexF"))$table 
+topTags(glmLRT(lfit, coef = "GroupMu"))$table 
+topTags(glmLRT(lfit, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")))$table
 
+# add edgeRlrt results to master results table
 difmethods$edgeRlrt <- topTags(glmLRT(lfit, coef = "GroupMu"), n=Inf, sort.by = "none")$table$PValue 
 ```
 
@@ -464,6 +456,7 @@ To examine see how much shrinkage we got, we'll redo the dispersion estimation, 
 ```{r}
 rawd <- estimateDisp(dge, design = modm, prior.df = 0)
 plotBCV(rawd, cex=0.5)
+
 # Direct comparison
 plot( sqrt(rawd$tagwise.dispersion), sqrt(dge$tagwise.dispersion) - sqrt(rawd$tagwise.dispersion),
       pch = 20, xlab = "sqrt Unshrunk disp", ylab = "difference (sqrt Shrunk - sqrt Unshrunk disp)")
@@ -483,10 +476,11 @@ dge <- estimateDisp(dge, design = modm, robust = TRUE)
 
 qfit <- glmQLFit(dge, modm)
 
-topTags(glmQLFTest(qfit, coef = "SexF"))$table %>% signif(3)
-topTags(glmQLFTest(qfit, coef = "GroupMu"))$table %>% signif(3)
-topTags(glmQLFTest(qfit, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")))$table %>% signif(3)
+topTags(glmQLFTest(qfit, coef = "SexF"))$table
+topTags(glmQLFTest(qfit, coef = "GroupMu"))$table
+topTags(glmQLFTest(qfit, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")))$table 
 
+# add edgeRquasi results to master results table
 difmethods$edgeRquasi <- topTags(glmQLFTest(qfit, coef = "GroupMu"), n=Inf, 
                                  sort.by = "none")$table$PValue 
 ```
@@ -532,6 +526,7 @@ plot(dge$samples$norm.factors, colSums(counts), pch = 20,
 plot(colData(dds)$sizeFactor, colSums(counts), pch = 20,
      xlab = "DESeq2 size factors", ylab = "depth")
 ```
+
 There's not a huge amount of agreement between the DESeq2 size factors and the TMM normalization factors. The DESeq2 factors are much more correlated with depth than TMM.
 
 Next, we run the analysis and pull out the results table for the Group comparison (`results` is analogous to limma's `topTable` and edgeR's `topTags` functions). We'll also add those p-values to our results object. 
@@ -540,11 +535,13 @@ Next, we run the analysis and pull out the results table for the Group compariso
 dds <- DESeq(dds)
 
 resultsNames(dds)
+
 deseq_group <- results(dds, name = "GroupMu")
 
 # top genes for Chd8 group
 head( deseq_group[ order(deseq_group$pvalue), ] )
 
+# add deseq2 results to master results table
 difmethods$deseq2 <-  deseq_group$pvalue
 ```
 
@@ -560,7 +557,7 @@ Note that `DESeq2` fails to give results for three genes (they have extreme outl
 difmethods[apply(difmethods, 1, function(x) any(is.na(x))),]
 ```
 
-Also note that by default `DESeq2` applies Independent Filtering when computing adjusted p-values. This is different than standard FDR correction, and tends to have greater power by 'spending' the type I error according to the overall mean expression. However, it can also lead to additional genes with missing adjusted p-values (these are 'filtered' out due to low overall expression). For more info, see [this section of the DESeq2 vignette](https://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#independent-filtering-of-results). 
+Also note that by default `DESeq2` applies Independent Filtering when computing adjusted p-values. This is different than 'standard' FDR correction, and tends to have greater power by 'spending' the type I error according to the overall mean expression. However, it can also lead to additional genes with missing adjusted p-values (these are 'filtered' out due to low overall expression). For more info, see [this section of the DESeq2 vignette](https://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#independent-filtering-of-results). 
 
 # Heatmaps of top genes (limma-voom)
 
@@ -604,7 +601,7 @@ We see the strongest visual effect with the DPC variable.
 
 ## Bonus topic: Heatmap with adjusted data (limma-trend)
 
-Because the expression changes due to Group are small, to visualize them better we can first adjust the data for DPC, as that's a huge signal in the data. It's OK to do this as long as it's clearly indicated that it has been done. We'll use the limma-trend version of the analysis since this is carried out on the log2 CPM values, which are nice to use for visualization (as opposed to counts). In addition, we'll show how to clip the heatmap.
+Because the expression changes due to Group are small, to visualize them better we can first adjust the data for DPC, as that's a huge signal in the data. It's OK to do this as long as it's clearly indicated that it has been done. We'll use the limma-trend version of the analysis since this is carried out on the log2 CPM values, which are nice to use for visualization (as opposed to raw counts).
 
 The estimated (fitted) effect of DPC is the fitted coefficients for DPC multiplied by the relevant part of the design matrix. We subtract that from the original data to give us our "DPC-corrected" data.
 
@@ -626,33 +623,15 @@ pheatmap(dadjG %>% data.frame() %>%
 
 Now the pattern by Group (WT vs Mutant) is a bit easier to see. 
 
-Clipping the data (recall from our lecture on exploratory data analysis and visualization) may make it easier to visualize. It's somewhat a matter of taste; and in this case it doesn't make a huge difference. 
-
-```{r adjhm.clip, fig.height = 6, fig.width = 10}
-# Sets the minimum (-3), the maximum (3), and the increasing steps (range divided by number of colors)
-# for the color scale
-breaksList = seq(-3, 3, by = 6/length(bcols))
-
-pheatmap(dadjG %>% data.frame() %>%
-           dplyr::filter(rownames(sumexpG) %in% rownames(topTable(limmavoomTMM, number = 30, 
-                                                     coef = "GroupMu", sort.by = "p"))),
-         scale="row", breaks = breaksList,
-         cluster_rows = TRUE, cluster_cols = FALSE, color = bcols, border_color = NA,
-           annotation_col = colData(sumexpG)[,c("Group", "DPC","Sex" )] %>% data.frame(),
-         main = "Chd8 genotype effect, Dev stage-corrected,  clipped (limma-trend)")
-```
-
 Heatmap for all the FDR < 0.05 genes (there are `r nrow(topTable(limmavoomTMM, number = Inf, coef = "GroupMu", sort.by = "p", p.value = 0.05))` by limma-trend:
 
 ```{r adjhm.clip.more, fig.height = 6, fig.width = 10}
-breaksList = seq(-3, 3, by = 6/length(bcols))
-
 pheatmap(dadjG %>% data.frame() %>%
            dplyr::filter(rownames(sumexpG) %in% rownames(topTable(limmavoomTMM, number = Inf, 
                                                                   p.value = 0.05,
                                                                   coef = "GroupMu", 
                                                                   sort.by = "p"))),
-         scale="row", breaks = breaksList, show_rownames = FALSE,
+         scale="row", show_rownames = FALSE,
          cluster_rows = TRUE, cluster_cols = FALSE, color = bcols, border_color = NA,
            annotation_col = colData(sumexpG)[,c("Group", "DPC","Sex" )] %>% data.frame(),
          main = "Chd8 genotype FDR < 0.05, Dev stage-corrected, clipped (limma-trend)")
@@ -745,7 +724,7 @@ disg <- row.names(difmethods)[which( difranks[,"limmavoom"] < 10 &
                                      difranks[,"limmatrend"] > 1000)]
 
 # these "hits" are specific to voom.
-signif(difmethods[disg,], 3)
+difmethods[disg,]
 difranks[disg,]
 
 ```

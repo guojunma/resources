@@ -2,45 +2,61 @@ RNA-seq examples
 ================
 Paul Pavlidis and Keegan Korthauer
 
--   [Introduction](#introduction)
--   [Setup](#setup)
--   [Preparing for analysis](#preparing-for-analysis)
-    -   [Loading and preparing data](#loading-and-preparing-data)
-        -   [Sequencing space](#sequencing-space)
-    -   [Counts to CPM](#counts-to-cpm)
-    -   [Setting up our design matrix](#setting-up-our-design-matrix)
--   [Differential expression
-    analysis](#differential-expression-analysis)
-    -   [Using standard linear model](#using-standard-linear-model)
-    -   [Using limma on log2cpm](#using-limma-on-log2cpm)
-        -   [Bonus topic: P-value
-            distribution](#bonus-topic-p-value-distribution)
-    -   [Using limma-trend](#using-limma-trend)
-    -   [Using limma-voom](#using-limma-voom)
-    -   [Using limma-voom with TMM](#using-limma-voom-with-tmm)
-    -   [Using edgeR LRT](#using-edger-lrt)
-        -   [Likelihood ratio test (LRT)](#likelihood-ratio-test-lrt)
-    -   [Using edgeR Quasi-likelihood](#using-edger-quasi-likelihood)
-    -   [Using DESeq2](#using-deseq2)
--   [Heatmaps of top genes
-    (limma-voom)](#heatmaps-of-top-genes-limma-voom)
-    -   [Bonus topic: Heatmap with adjusted data
-        (limma-trend)](#bonus-topic-heatmap-with-adjusted-data-limma-trend)
--   [Comparing methods](#comparing-methods)
-    -   [Differences between limma-trend and
-        limma-voom](#differences-between-limma-trend-and-limma-voom)
+- <a href="#introduction" id="toc-introduction">Introduction</a>
+- <a href="#setup" id="toc-setup">Setup</a>
+- <a href="#preparing-for-analysis"
+  id="toc-preparing-for-analysis">Preparing for analysis</a>
+  - <a href="#loading-and-preparing-data"
+    id="toc-loading-and-preparing-data">Loading and preparing data</a>
+    - <a href="#sequencing-space" id="toc-sequencing-space">Sequencing
+      space</a>
+  - <a href="#counts-to-cpm" id="toc-counts-to-cpm">Counts to CPM</a>
+  - <a href="#setting-up-our-design-matrix"
+    id="toc-setting-up-our-design-matrix">Setting up our design matrix</a>
+- <a href="#differential-expression-analysis"
+  id="toc-differential-expression-analysis">Differential expression
+  analysis</a>
+  - <a href="#using-standard-linear-model"
+    id="toc-using-standard-linear-model">Using standard linear model</a>
+  - <a href="#using-limma-on-log2cpm" id="toc-using-limma-on-log2cpm">Using
+    limma on log2cpm</a>
+    - <a href="#bonus-topic-p-value-distribution"
+      id="toc-bonus-topic-p-value-distribution">Bonus topic: P-value
+      distribution</a>
+  - <a href="#using-limma-trend" id="toc-using-limma-trend">Using
+    limma-trend</a>
+  - <a href="#using-limma-voom" id="toc-using-limma-voom">Using
+    limma-voom</a>
+  - <a href="#using-limma-voom-with-tmm"
+    id="toc-using-limma-voom-with-tmm">Using limma-voom with TMM</a>
+  - <a href="#using-edger-lrt" id="toc-using-edger-lrt">Using edgeR LRT</a>
+    - <a href="#likelihood-ratio-test-lrt"
+      id="toc-likelihood-ratio-test-lrt">Likelihood ratio test (LRT)</a>
+  - <a href="#using-edger-quasi-likelihood"
+    id="toc-using-edger-quasi-likelihood">Using edgeR Quasi-likelihood</a>
+  - <a href="#using-deseq2" id="toc-using-deseq2">Using DESeq2</a>
+- <a href="#heatmaps-of-top-genes-limma-voom"
+  id="toc-heatmaps-of-top-genes-limma-voom">Heatmaps of top genes
+  (limma-voom)</a>
+  - <a href="#bonus-topic-heatmap-with-adjusted-data-limma-trend"
+    id="toc-bonus-topic-heatmap-with-adjusted-data-limma-trend">Bonus topic:
+    Heatmap with adjusted data (limma-trend)</a>
+- <a href="#comparing-methods" id="toc-comparing-methods">Comparing
+  methods</a>
+  - <a href="#differences-between-limma-trend-and-limma-voom"
+    id="toc-differences-between-limma-trend-and-limma-voom">Differences
+    between limma-trend and limma-voom</a>
 
 # Introduction
 
 This file provides code, context and additional information related to
-the STAT540 lectures on RNA-seq analysis.
+the STAT540 lecture on RNA-seq analysis.
 
 Among other things it shows how to run differential expression analysis
 on RNA-seq data sets using a variety of methods. We’ll get a sense at
 how the results differ across methods, though obviously doing this on a
 single data set is not a real evaluation. The example data set is the
-same “Gompers” Chd8 mutant data set we used for lecture 3
-(“exploration”).
+same “Gompers” Chd8 mutant data set we introduced in lecture 1.
 
 # Setup
 
@@ -59,6 +75,7 @@ install("pheatmap")
 install("qvalue")
 install("GGally")
 install("UpSetR")
+install("statmod")
 ```
 
 Next, we’ll load these libraries and set some plotting defaults.
@@ -70,7 +87,7 @@ library(limma)
 library(DESeq2)
 library(edgeR)
 library(pheatmap)
-library(qvalue)
+library(qvalue) 
 library(GGally)
 library(UpSetR)
 
@@ -84,26 +101,28 @@ theme_update(panel.grid.major = element_blank(), panel.grid.minor = element_blan
 
 ## Loading and preparing data
 
-We will use the same dataset as we used in the [exploratory data
-analysis
-lecture](https://stat540-ubc.github.io/lectures/lectures_2021/lect03-eda.html#1),
-which was also explored in the [companion
-document](https://github.com/STAT540-UBC/STAT540-UBC.github.io/blob/master/examples/exploration-examples/explore.md).
+We will use the same dataset as introduced in [lecture
+1](https://stat540-ubc.github.io/lectures/lectures_2021/lect03-eda.html#1).
 This is the data from [Gompers et al.,
 2017](https://www.ncbi.nlm.nih.gov/pubmed/28671691), that is available
 on GEO, at [Accession
 GSE99331](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE99331).
-However, note that this data is only available as RPKM values, *not* raw
-counts. As raw counts are preferable for differential expression
-analysis, Paul obtained these counts directly from the authors in Jan
-2018.
+However, note that this data is only publicly available as RPKM values,
+*not* raw counts. As raw counts are preferable for differential
+expression analysis, Paul Pavlidis obtained these counts directly from
+the authors in Jan 2018. If you’d like to get more acquainted with this
+dataset before proceeding, here is a [markdown document going over some
+preliminary
+EDA](https://github.com/STAT540-UBC/STAT540-UBC.github.io/blob/master/examples/exploration-examples/explore.md).
 
-Note that we are using a corrected version of the meta-data obtained
-from the authors that fixes the miscoded sex for P0 animals.
+Notes:
 
-As in the lecture 3 example, following the nomenclature of the authors,
-“Group” indicates the Chd8 genotype (wild type or heterozygous mutant),
-“DPC” indicates “Days post conception” (developmental stage).
+- we are using a corrected version of the meta-data obtained from the
+  authors that fixes the miscoded sex for P0 animals
+
+- following the nomenclature of the authors, “Group” indicates the Chd8
+  genotype (wild type or heterozygous mutant), “DPC” indicates “Days
+  post conception” (developmental stage)
 
 First, we’ll read in the metadata, and recode the categorical variables
 as factors with meaningful levels - so we don’t have to remember whether
@@ -307,11 +326,11 @@ we’ll use the threshold used by the authors: only keep genes with at
 least 2 samples that have CPM greater than 10.
 
 ``` r
-keep <- which(rowSums(assays(sumexp)$cpm > 10) > 2)
+keep <- which(rowSums(assays(sumexp)$cpm > 10) >= 2)
 length(keep)  
 ```
 
-    ## [1] 12021
+    ## [1] 12158
 
 ``` r
 sumexp <- sumexp[keep,]
@@ -329,10 +348,10 @@ sumexp
 ```
 
     ## class: SummarizedExperiment 
-    ## dim: 12021 44 
+    ## dim: 12158 44 
     ## metadata(0):
     ## assays(3): counts cpm log2cpm
-    ## rownames(12021): 0610007P14Rik 0610009B22Rik ... Zzef1 Zzz3
+    ## rownames(12158): 0610007P14Rik 0610009B22Rik ... Zzef1 Zzz3
     ## rowData names(0):
     ## colnames(44): Sample_ANAN001A Sample_ANAN001B ... Chd8.adult.S29
     ##   Chd8.adult.S31
@@ -390,10 +409,10 @@ It’s not unreasonable to ask whether just using standard linear models
 on log2(CPM + 1) would be okay. Remember the problems with this are
 supposed to be:
 
--   Counts have non-normal behaviour (motivating `edgeR` and `DESeq`)
--   Accounting for mean-variance effects is important (motivating
-    limma-voom and limma-trend)
--   Using moderation of the variance estimates is a good idea.
+- Counts have non-normal behaviour (motivating `edgeR` and `DESeq`)
+- Accounting for mean-variance effects is important (motivating
+  limma-voom and limma-trend)
+- Using moderation of the variance estimates is a good idea.
 
 We’ll see how much this matters (for this particular data set).
 
@@ -410,13 +429,18 @@ then adds other features that we want to see the effect of, while still
 using the rest of the limma workflow (e.g. `topTable`). To do so we need
 to turn off the extras (specifically variance shrinkage and degrees of
 freedom adjustment), but `limma` does not provide any built-in way to do
-that. Therefore, I provide some code that lets you use the usual limma
-workflow, but without the bells and whistles; I call it `noBayes` to
-replace `eBayes`. In using `noBayes` we don’t get the `B` statistic so
-you have to specify `sort.by = "p"` in the call to `topTable`, since
-`sort.by="B"` is the default when examining single coefficients.
+that. Therefore, I provide [some
+code](https://github.com/STAT540-UBC/resources/blob/main/rnaseqdiffex-examples/noBayes.R)
+that lets you use the usual limma workflow, but without the bells and
+whistles; I call it `noBayes` to replace `eBayes`. Essentially, it hacks
+the `limma` output and replaces the moderated results with the standard
+`lm` results so that we can operate onit with `topTable`. In using
+`noBayes` we don’t get the `B` statistic so you have to specify
+`sort.by = "p"` in the call to `topTable`, since `sort.by="B"` is the
+default when examining single coefficients.
 
 ``` r
+# run the function to hack the limma output to be lm output 
 source("noBayes.R")
 lmlogcpm <- lmFit(assays(sumexp)$log2cpm, design = modm)
 lmlogcpm <- noBayes(lmlogcpm) 
@@ -427,52 +451,63 @@ covariates, then save the results for Group in the dataframe we’ll add
 other results to.
 
 ``` r
-signif(topTable(lmlogcpm, number = 10, coef = "SexF", sort.by = "p"), 3)   # sex
+topTable(lmlogcpm, number = 10, coef = "SexF", sort.by = "p")  # sex
 ```
 
-    ##                logFC AveExpr      t  P.Value adj.P.Val
-    ## Ddx3y         -5.870    2.42 -95.10 8.11e-46  9.75e-42
-    ## Xist           8.210    5.52  67.20 2.77e-40  1.66e-36
-    ## Kdm5d         -5.410    2.13 -58.80 3.75e-38  1.50e-34
-    ## Uty           -4.550    1.82 -54.30 7.03e-37  2.11e-33
-    ## Eif2s3y       -5.400    2.17 -39.20 9.58e-32  2.30e-28
-    ## Kdm6a          0.533    5.62   9.97 5.00e-12  1.00e-08
-    ## Eif2s3x        0.648    4.27   8.29 5.87e-10  1.01e-06
-    ## 5530601H04Rik  0.490    3.76   6.48 1.43e-07  2.15e-04
-    ## Kdm5c          0.320    7.32   6.06 5.29e-07  7.06e-04
-    ## Pbdc1          0.366    4.77   4.96 1.61e-05  1.94e-02
+    ##                    logFC  AveExpr          t      P.Value    adj.P.Val
+    ## Ddx3y         -5.8697805 2.419431 -95.057666 8.111898e-46 9.862445e-42
+    ## Xist           8.2072064 5.524871  67.234989 2.765639e-40 1.681232e-36
+    ## Kdm5d         -5.4074398 2.130757 -58.809346 3.748147e-38 1.518999e-34
+    ## Uty           -4.5456105 1.819027 -54.280450 7.032875e-37 2.137642e-33
+    ## Eif2s3y       -5.4040271 2.174713 -39.218603 9.579370e-32 2.329320e-28
+    ## Kdm6a          0.5334235 5.617558   9.968761 4.996264e-12 1.012410e-08
+    ## Eif2s3x        0.6479423 4.271539   8.288993 5.867119e-10 1.019035e-06
+    ## 5530601H04Rik  0.4903023 3.757509   6.476082 1.427792e-07 2.169887e-04
+    ## Kdm5c          0.3201610 7.324809   6.055220 5.285808e-07 7.140539e-04
+    ## Pbdc1          0.3656907 4.773626   4.956618 1.612849e-05 1.960901e-02
 
 ``` r
-signif(topTable(lmlogcpm, number = 10, coef = "GroupMu", sort.by = "p"), 3)   # group
+topTable(lmlogcpm, number = 10, coef = "GroupMu", sort.by = "p")  # group
 ```
 
-    ##          logFC AveExpr      t  P.Value adj.P.Val
-    ## Chd8    -0.575    7.12 -10.90 4.28e-13  5.14e-09
-    ## Vrk3     0.231    5.01   6.79 5.39e-08  2.22e-04
-    ## Git1     0.163    7.87   6.78 5.55e-08  2.22e-04
-    ## Dnajc4   0.311    3.55   6.69 7.42e-08  2.23e-04
-    ## Lrrc48   0.356    3.05   5.89 8.79e-07  2.11e-03
-    ## Parva    0.258    6.03   5.63 1.96e-06  3.93e-03
-    ## Hmgcll1 -0.250    4.69  -5.58 2.36e-06  4.06e-03
-    ## Anxa11   0.361    2.15   5.51 2.86e-06  4.30e-03
-    ## Mtrr     0.223    3.99   5.46 3.36e-06  4.49e-03
-    ## Mbtps2  -0.191    5.60  -5.43 3.76e-06  4.52e-03
+    ##              logFC  AveExpr          t      P.Value    adj.P.Val
+    ## Chd8    -0.5752382 7.119133 -10.889344 4.277262e-13 5.200295e-09
+    ## Vrk3     0.2311065 5.012246   6.790790 5.394690e-08 2.249816e-04
+    ## Git1     0.1629843 7.868139   6.781500 5.551446e-08 2.249816e-04
+    ## Dnajc4   0.3106221 3.547794   6.687639 7.417046e-08 2.254411e-04
+    ## Lrrc48   0.3562182 3.053709   5.892215 8.787116e-07 2.136675e-03
+    ## Parva    0.2575209 6.027494   5.634803 1.961414e-06 3.974479e-03
+    ## Hmgcll1 -0.2502977 4.687811  -5.575087 2.362859e-06 4.103948e-03
+    ## Anxa11   0.3610589 2.149160   5.513723 2.860932e-06 4.347901e-03
+    ## Mtrr     0.2231728 3.989127   5.461864 3.362643e-06 4.542557e-03
+    ## Mbtps2  -0.1906449 5.601007  -5.425997 3.760056e-06 4.571476e-03
 
 ``` r
-signif(topTable(lmlogcpm, number =10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")), 3) # DPC
+topTable(lmlogcpm, number =10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")) # DPC
 ```
 
-    ##        DPC14.5 DPC17.5 DPC21 DPC77 AveExpr    F  P.Value adj.P.Val
-    ## Rps23    -7.24   -7.76 -7.78 -7.60    1.73 4310 8.25e-49  9.91e-45
-    ## Rps13    -7.20   -7.54 -7.56 -7.54    1.79 3680 1.48e-47  8.91e-44
-    ## Rpl28    -7.54   -7.48 -7.10 -7.80    2.21 2930 1.01e-45  4.05e-42
-    ## Rps29    -7.58   -7.60 -7.49 -7.76    1.80 2720 3.92e-45  1.18e-41
-    ## Rpl19    -7.38   -7.82 -7.93 -7.59    2.30 2430 3.08e-44  7.40e-41
-    ## Rpl36a   -6.17   -6.48 -6.63 -6.32    1.68 2330 6.57e-44  1.32e-40
-    ## Rps16    -6.28   -6.65 -6.57 -6.80    1.86 2190 2.19e-43  3.75e-40
-    ## Gapdh    -8.09   -8.31 -7.88 -7.93    3.10 2080 5.32e-43  7.99e-40
-    ## Rpsa     -6.63   -7.35 -7.51 -8.04    3.93 1960 1.71e-42  2.28e-39
-    ## Rps17    -7.28   -7.39 -7.52 -7.72    2.13 1900 3.04e-42  3.65e-39
+    ##          DPC14.5   DPC17.5     DPC21     DPC77  AveExpr        F      P.Value
+    ## Rps23  -7.237540 -7.758854 -7.782795 -7.604795 1.733041 4305.364 8.247956e-49
+    ## Rps13  -7.202030 -7.542979 -7.559957 -7.544650 1.794908 3681.531 1.482295e-47
+    ## Rpl28  -7.535123 -7.480228 -7.102245 -7.795321 2.206374 2928.403 1.010066e-45
+    ## Rps29  -7.583209 -7.604292 -7.489372 -7.763519 1.804189 2720.614 3.923275e-45
+    ## Rpl19  -7.379356 -7.824504 -7.931219 -7.590126 2.297790 2432.830 3.079881e-44
+    ## Rpl36a -6.173804 -6.480819 -6.628506 -6.324045 1.683624 2334.821 6.570024e-44
+    ## Rps16  -6.283539 -6.647790 -6.574086 -6.800874 1.855359 2187.318 2.185955e-43
+    ## Gapdh  -8.093534 -8.309696 -7.879648 -7.930588 3.097617 2084.215 5.318848e-43
+    ## Rpsa   -6.629828 -7.346022 -7.506683 -8.041747 3.934573 1956.133 1.709777e-42
+    ## Rps17  -7.281908 -7.393224 -7.523904 -7.723445 2.134778 1895.928 3.039795e-42
+    ##           adj.P.Val
+    ## Rps23  1.002787e-44
+    ## Rps13  9.010874e-44
+    ## Rpl28  4.093459e-42
+    ## Rps29  1.192479e-41
+    ## Rpl19  7.489039e-41
+    ## Rpl36a 1.331306e-40
+    ## Rps16  3.796691e-40
+    ## Gapdh  8.083320e-40
+    ## Rpsa   2.309719e-39
+    ## Rps17  3.695783e-39
 
 ``` r
 # Start to collect the data from the different methods.
@@ -494,52 +529,74 @@ plotSA(limmalogcpm, main = "Default limma")
 ![](examples-RNAseq_files/figure-gfm/limma-1.png)<!-- -->
 
 ``` r
-signif(topTable(limmalogcpm, number = 10, coef = "SexF", sort.by = "p"), 3)   # sex
+topTable(limmalogcpm, number = 10, coef = "SexF", sort.by = "p")  # sex
 ```
 
-    ##                logFC AveExpr      t  P.Value adj.P.Val     B
-    ## Ddx3y         -5.870    2.42 -95.20 4.43e-50  5.33e-46 75.20
-    ## Xist           8.210    5.52  70.10 1.33e-44  8.00e-41 71.70
-    ## Kdm5d         -5.410    2.13 -60.60 4.96e-42  1.99e-38 69.50
-    ## Uty           -4.550    1.82 -55.70 1.61e-40  4.83e-37 68.00
-    ## Eif2s3y       -5.400    2.17 -41.00 4.08e-35  9.80e-32 61.40
-    ## Kdm6a          0.533    5.62   9.82 2.26e-12  4.52e-09 18.00
-    ## Eif2s3x        0.648    4.27   8.47 1.42e-10  2.44e-07 14.10
-    ## 5530601H04Rik  0.490    3.76   6.60 5.80e-08  8.72e-05  8.23
-    ## Kdm5c          0.320    7.32   5.96 4.83e-07  6.45e-04  6.18
-    ## Pbdc1          0.366    4.77   5.04 9.57e-06  1.15e-02  3.29
+    ##                    logFC  AveExpr          t      P.Value    adj.P.Val
+    ## Ddx3y         -5.8697805 2.419431 -95.203058 4.861801e-50 5.910978e-46
+    ## Xist           8.2072064 5.524871  70.040978 1.447373e-44 8.798582e-41
+    ## Kdm5d         -5.4074398 2.130757 -60.616331 5.360536e-42 2.172446e-38
+    ## Uty           -4.5456105 1.819027 -55.670901 1.730835e-40 5.260873e-37
+    ## Eif2s3y       -5.4040271 2.174713 -40.979745 4.353356e-35 1.058562e-31
+    ## Kdm6a          0.5334235 5.617558   9.819702 2.297957e-12 4.656427e-09
+    ## Eif2s3x        0.6479423 4.271539   8.465140 1.444636e-10 2.509126e-07
+    ## 5530601H04Rik  0.4903023 3.757509   6.599339 5.873485e-08 8.926229e-05
+    ## Kdm5c          0.3201610 7.324809   5.955243 4.877075e-07 6.588387e-04
+    ## Pbdc1          0.3656907 4.773626   5.041597 9.643786e-06 1.172492e-02
+    ##                       B
+    ## Ddx3y         75.050571
+    ## Xist          71.580243
+    ## Kdm5d         69.376332
+    ## Uty           67.890039
+    ## Eif2s3y       61.358057
+    ## Kdm6a         18.029033
+    ## Eif2s3x       14.038440
+    ## 5530601H04Rik  8.218915
+    ## Kdm5c          6.167892
+    ## Pbdc1          3.284835
 
 ``` r
-signif(topTable(limmalogcpm, number = 10, coef = "GroupMu", sort.by = "p"), 3)   # group
+topTable(limmalogcpm, number = 10, coef = "GroupMu", sort.by = "p")   # group
 ```
 
-    ##          logFC AveExpr      t  P.Value adj.P.Val     B
-    ## Chd8    -0.575    7.12 -10.80 1.21e-13  1.46e-09 19.30
-    ## Dnajc4   0.311    3.55   6.54 7.11e-08  4.28e-04  7.80
-    ## Vrk3     0.231    5.01   6.26 1.77e-07  7.10e-04  6.98
-    ## Lrrc48   0.356    3.05   5.94 5.11e-07  1.53e-03  6.03
-    ## Git1     0.163    7.87   5.62 1.49e-06  3.17e-03  5.07
-    ## Anxa11   0.361    2.15   5.60 1.58e-06  3.17e-03  5.02
-    ## Parva    0.258    6.03   5.50 2.19e-06  3.75e-03  4.73
-    ## Hmgcll1 -0.250    4.69  -5.42 2.77e-06  4.17e-03  4.51
-    ## Xrcc4    0.303    3.84   5.37 3.31e-06  4.41e-03  4.35
-    ## Mtrr     0.223    3.99   5.23 5.19e-06  6.24e-03  3.95
+    ##              logFC  AveExpr          t      P.Value    adj.P.Val         B
+    ## Chd8    -0.5752382 7.119133 -10.823715 1.237803e-13 1.504920e-09 19.212349
+    ## Dnajc4   0.3106221 3.547794   6.537689 7.190446e-08 4.371072e-04  7.778548
+    ## Vrk3     0.2311065 5.012246   6.260586 1.787107e-07 7.242547e-04  6.965740
+    ## Lrrc48   0.3562182 3.053709   5.938174 5.158506e-07 1.567928e-03  6.016657
+    ## Git1     0.1629843 7.868139   5.614300 1.493450e-06 3.232032e-03  5.062541
+    ## Anxa11   0.3610589 2.149160   5.594215 1.595015e-06 3.232032e-03  5.003425
+    ## Parva    0.2575209 6.027494   5.495447 2.203655e-06 3.827433e-03  4.712906
+    ## Hmgcll1 -0.2502977 4.687811  -5.422666 2.795292e-06 4.248146e-03  4.499069
+    ## Xrcc4    0.3031190 3.842087   5.368758 3.332959e-06 4.502457e-03  4.340844
+    ## Mtrr     0.2231728 3.989127   5.230369 5.230274e-06 6.358968e-03  3.935440
 
 ``` r
-signif(topTable(limmalogcpm, number =10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")), 3) # DPC
+topTable(limmalogcpm, number =10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")) # DPC
 ```
 
-    ##        DPC14.5 DPC17.5 DPC21 DPC77 AveExpr    F  P.Value adj.P.Val
-    ## Rps23    -7.24   -7.76 -7.78 -7.60    1.73 4110 3.74e-53  4.49e-49
-    ## Rps13    -7.20   -7.54 -7.56 -7.54    1.79 3570 6.80e-52  4.09e-48
-    ## Rpl28    -7.54   -7.48 -7.10 -7.80    2.21 2910 4.46e-50  1.79e-46
-    ## Rps29    -7.58   -7.60 -7.49 -7.76    1.80 2740 1.58e-49  4.75e-46
-    ## Rpl19    -7.38   -7.82 -7.93 -7.59    2.30 2480 1.18e-48  2.83e-45
-    ## Rpl36a   -6.17   -6.48 -6.63 -6.32    1.68 2310 5.35e-48  1.07e-44
-    ## Rps16    -6.28   -6.65 -6.57 -6.80    1.86 2190 1.63e-47  2.80e-44
-    ## Gapdh    -8.09   -8.31 -7.88 -7.93    3.10 2170 1.95e-47  2.93e-44
-    ## Rpsa     -6.63   -7.35 -7.51 -8.04    3.93 2020 8.45e-47  1.13e-43
-    ## Rps17    -7.28   -7.39 -7.52 -7.72    2.13 1960 1.49e-46  1.79e-43
+    ##          DPC14.5   DPC17.5     DPC21     DPC77  AveExpr        F      P.Value
+    ## Rps23  -7.237540 -7.758854 -7.782795 -7.604795 1.733041 4105.000 4.131900e-53
+    ## Rps13  -7.202030 -7.542979 -7.559957 -7.544650 1.794908 3566.014 7.506346e-52
+    ## Rpl28  -7.535123 -7.480228 -7.102245 -7.795321 2.206374 2910.686 4.910542e-50
+    ## Rps29  -7.583209 -7.604292 -7.489372 -7.763519 1.804189 2737.465 1.735817e-49
+    ## Rpl19  -7.379356 -7.824504 -7.931219 -7.590126 2.297790 2482.826 1.293723e-48
+    ## Rpl36a -6.173804 -6.480819 -6.628506 -6.324045 1.683624 2307.056 5.856418e-48
+    ## Rps16  -6.283539 -6.647790 -6.574086 -6.800874 1.855359 2185.256 1.786157e-47
+    ## Gapdh  -8.093534 -8.309696 -7.879648 -7.930588 3.097617 2166.237 2.137769e-47
+    ## Rpsa   -6.629828 -7.346022 -7.506683 -8.041747 3.934573 2017.231 9.248037e-47
+    ## Rps17  -7.281908 -7.393224 -7.523904 -7.723445 2.134778 1962.266 1.631406e-46
+    ##           adj.P.Val
+    ## Rps23  5.023564e-49
+    ## Rps13  4.563108e-48
+    ## Rpl28  1.990079e-46
+    ## Rps29  5.276017e-46
+    ## Rpl19  3.145816e-45
+    ## Rpl36a 1.186706e-44
+    ## Rps16  3.102300e-44
+    ## Gapdh  3.248875e-44
+    ## Rpsa   1.249307e-43
+    ## Rps17  1.983464e-43
 
 ``` r
 difmethods$limmalogcpm <- topTable(limmalogcpm, number = Inf, coef = "GroupMu", 
@@ -556,19 +613,19 @@ we get for using `eBayes`.
 limmalogcpm$df.prior
 ```
 
-    ## [1] 4.351693
+    ## [1] 4.316442
 
 ### Bonus topic: P-value distribution
 
-Not specifically related to RNA-seq. An essential diagnostic after doing
-this kind of statistical analysis is to examine the distribution of the
-p-values, because those p-values are used to estimate false discovery
-rates, which in turn depend on p-values following some sort of expected
-behaviour.
+An essential diagnostic after doing this kind of statistical analysis
+(not exclusive to RNA-seq, but for any high-dimensional analysis) is to
+examine the distribution of the p-values, because those p-values are
+used to estimate false discovery rates, which in turn depend on p-values
+following some sort of expected behaviour.
 
 Options here include looking at p-value distributions (I recommend) or
-quantile-quantile plots of p-values. Quantile-quantile plots are also
-often used to examine test statistics.
+quantile-quantile plots of p-values. Quantile-quantile plots (not shown
+here) are also often used to examine test statistics.
 
 ``` r
 hist(topTable(limmalogcpm, number = Inf, coef = "SexF")$P.Value, breaks=100, 
@@ -581,7 +638,7 @@ hist(topTable(limmalogcpm, number = Inf, coef = "SexF")$P.Value, breaks=100,
 ``` r
 hist(topTable(limmalogcpm, number = Inf, coef = "GroupMu")$P.Value, breaks=100, 
      xlab = "P-value",
-     main="Pval dist for 'Sex' (limma on logcpm)")
+     main="Pval dist for 'Group' (limma on logcpm)")
 ```
 
 ![](examples-RNAseq_files/figure-gfm/pvaluedists-2.png)<!-- -->
@@ -594,30 +651,10 @@ hist(topTable(limmalogcpm, number = Inf, coef = c("DPC14.5", "DPC17.5", "DPC21",
 
 ![](examples-RNAseq_files/figure-gfm/pvaluedists-3.png)<!-- -->
 
-``` r
-# Instead of using pvalue histrograms, you might see QQ-plots. Here it is for 'Sex' and 'Group' 
-psx <- topTable(limmalogcpm, number = Inf, coef = "SexF")$P.Value
-qqplot( -log10(qunif(1-psx)), -log10(psx) , ylim=c(0,50) , xlab="expected -log10p", ylab="observed -log10p", main="QQ p for Sex (limma on cpm)", pch=20, cex=0.5)
-abline(0,1, lty=3)
-```
-
-![](examples-RNAseq_files/figure-gfm/pvaluedists-4.png)<!-- -->
-
-``` r
-ps <- topTable(limmalogcpm, number = Inf, coef = "GroupMu")$P.Value
-qqplot( -log10(qunif(1-ps)), -log10(ps) , ylim=c(0,15) , xlab="expected -log10p", ylab="observed -log10p", main="QQ p for Group (limma on cpm)", pch=20, cex=0.5)
-abline(0,1, lty=3)
-```
-
-![](examples-RNAseq_files/figure-gfm/pvaluedists-5.png)<!-- -->
-
-Compared to the histogram, the qq-plot gives a stronger impression of
-the deviation of the p-value distribution from the expected uniform
-throughout its range. The “inflation” we observe for the Chd8 genotype
-effect suggests *either* the effects of Chd8 are very widespread
-(biologically plausible) or there is a problem with our data/model
-resulting in inaccurate p-values (hard to know for certain, but the Sex
-statistics don’t show this inflation).
+If we don’t observe a relatively flat distribution for most of the range
+(in particular, apart from a possible spike of low p-values), this
+suggests there might be a problem with our data/model resulting in
+inaccurate p-values.
 
 Visualizing the p-value distributions you get a sense of how much of a
 “signal” there is, but this can be quantified using the
@@ -626,60 +663,49 @@ of “true null hypotheses” while `1 - pi_0` or `pi_1` is the estimated
 (in this case) fraction of differentially expressed genes (with respect
 to the selected coefficients in the linear model we are fitting). This
 is useful, though wouldn’t take these numbers too seriously, especially
-if your p-value distribution is at all “defective”. You’ll note that it
-breaks down if too many genes are differentially expressed so I don’t
-show the call for the DPC analysis.
+if your p-value distribution is at all “defective”.
 
 ``` r
 # Check pi0 estimates from qvalue
 1 - qvalue(topTable(limmalogcpm, number = Inf, coef = "SexF")$P.Value)$pi0
 ```
 
-    ## [1] 0.1630153
+    ## [1] 0.1624529
 
 ``` r
 1 - qvalue(topTable(limmalogcpm, number = Inf, coef = "GroupMu")$P.Value)$pi0 # this is the one we care about
 ```
 
-    ## [1] 0.3530434
+    ## [1] 0.3495736
 
 ``` r
 # For DPC, qvalue breaks because basically every gene is diff expr - basically 100%
 1 - qvalue(topTable(limmalogcpm, Inf, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77"))$P.Value)$pi0 
 ```
 
-    ## [1] 0.9976471
-
-``` r
-# You can also use qvalue to generate some diagnostic plots, related to p-value
-# distributions and pi0
-plot(qvalue(topTable(limmalogcpm, Inf, coef = "GroupMu")$P.Value))
-```
-
-![](examples-RNAseq_files/figure-gfm/pi0-1.png)<!-- -->
-
-For brevity’s sake I’m not going to show the full p-value histograms and
-qvalue analyses for each of the analyses.
+    ## [1] 0.9976912
 
 ## Using limma-trend
 
-Limma-trend is a modification to the standard limma approach that
-incorporates mean expression level as a covariate into the prior
-hyperparameter estimation. Its goal is to adjust for any mean-variance
-relationship still leftover after transformation using log CPM.
-Limma-trend is robust (according to the user manual) if the sequencing
-depth is “reasonably consistent” across samples (less than 3-fold range,
-which is not quite the case here - see below). Though it’s worth noting
-that in the original voom paper, voom was a bit better than ‘trend’. The
-way limma-trend works is the mean expression level is used as a
-covariate in the prior hyperparameter estimation.
+Here we start to get into the mean-variance relationships and how they
+can be addressed. Limma-trend is a modification to the standard limma
+approach that incorporates mean expression level as a covariate into the
+prior hyperparameter estimation. Its goal is to adjust for any
+mean-variance relationship still leftover after transformation using log
+CPM. If we *don’t* do this, we may be shrinking some genes too much, or
+too little, depending on their variance levels. Limma-trend is robust if
+the sequencing depth is “reasonably consistent” across samples
+(according to the user manual, less than 3-fold range, which is not
+quite the case here - see below). The way limma-trend works is the mean
+expression level is used as a covariate in the prior hyperparameter
+estimation.
 
 ``` r
 # note that the maximum depth is more than 4-fold higher than the minimum
 max(colSums(assays(sumexp)$counts)/min(colSums(assays(sumexp)$counts)))
 ```
 
-    ## [1] 4.126554
+    ## [1] 4.126548
 
 ``` r
 limmatrend <- lmFit( assays(sumexp)$log2cpm, design = modm)
@@ -695,54 +721,77 @@ well as add the p-values for Group for the limma-trend approach to our
 data frame of results.
 
 ``` r
-signif(topTable(limmatrend, number = 10, coef = "SexF", sort.by = "p") ,3)
+topTable(limmatrend, number = 10, coef = "SexF", sort.by = "p") 
 ```
 
-    ##                logFC AveExpr      t  P.Value adj.P.Val     B
-    ## Ddx3y         -5.870    2.42 -89.30 9.85e-50  1.18e-45 75.30
-    ## Xist           8.210    5.52  70.70 1.71e-45  1.03e-41 72.50
-    ## Kdm5d         -5.410    2.13 -58.70 4.11e-42  1.65e-38 69.70
-    ## Uty           -4.550    1.82 -53.10 2.68e-40  8.07e-37 67.80
-    ## Eif2s3y       -5.400    2.17 -40.60 1.79e-35  4.30e-32 61.90
-    ## Kdm6a          0.533    5.62   9.90 1.42e-12  2.85e-09 18.50
-    ## Eif2s3x        0.648    4.27   8.42 1.40e-10  2.40e-07 14.10
-    ## 5530601H04Rik  0.490    3.76   6.51 7.27e-08  1.09e-04  8.01
-    ## Kdm5c          0.320    7.32   6.07 3.11e-07  4.15e-04  6.61
-    ## Pbdc1          0.366    4.77   5.04 9.16e-06  1.10e-02  3.34
+    ##                    logFC  AveExpr          t      P.Value    adj.P.Val
+    ## Ddx3y         -5.8697805 2.419431 -89.272399 9.810469e-50 1.192757e-45
+    ## Xist           8.2072064 5.524871  70.745532 1.694616e-45 1.030157e-41
+    ## Kdm5d         -5.4074398 2.130757 -58.719315 4.091675e-42 1.658220e-38
+    ## Uty           -4.5456105 1.819027 -53.115414 2.673693e-40 8.126688e-37
+    ## Eif2s3y       -5.4040271 2.174713 -40.624211 1.778809e-35 4.325351e-32
+    ## Kdm6a          0.5334235 5.617558   9.902048 1.419374e-12 2.876126e-09
+    ## Eif2s3x        0.6479423 4.271539   8.421492 1.395818e-10 2.424336e-07
+    ## 5530601H04Rik  0.4903023 3.757509   6.505446 7.273079e-08 1.105326e-04
+    ## Kdm5c          0.3201610 7.324809   6.068016 3.110107e-07 4.201409e-04
+    ## Pbdc1          0.3656907 4.773626   5.042973 9.150790e-06 1.112553e-02
+    ##                       B
+    ## Ddx3y         75.210179
+    ## Xist          72.490478
+    ## Kdm5d         69.610347
+    ## Uty           67.777245
+    ## Eif2s3y       61.886945
+    ## Kdm6a         18.468644
+    ## Eif2s3x       14.058503
+    ## 5530601H04Rik  8.011313
+    ## Kdm5c          6.606029
+    ## Pbdc1          3.344271
 
 ``` r
-signif(topTable(limmatrend, number = 10, coef = "GroupMu", sort.by = "p") ,3)
+topTable(limmatrend, number = 10, coef = "GroupMu", sort.by = "p") 
 ```
 
-    ##          logFC AveExpr      t  P.Value adj.P.Val     B
-    ## Chd8    -0.575    7.12 -11.00 5.36e-14  6.44e-10 20.00
-    ## Dnajc4   0.311    3.55   6.24 1.76e-07  8.67e-04  6.98
-    ## Vrk3     0.231    5.01   6.18 2.16e-07  8.67e-04  6.80
-    ## Git1     0.163    7.87   5.78 8.13e-07  2.41e-03  5.61
-    ## Lrrc48   0.356    3.05   5.72 1.00e-06  2.41e-03  5.42
-    ## Parva    0.258    6.03   5.57 1.61e-06  3.23e-03  4.99
-    ## Hmgcll1 -0.250    4.69  -5.35 3.34e-06  5.73e-03  4.34
-    ## Anxa11   0.361    2.15   5.29 4.05e-06  6.08e-03  4.17
-    ## Xrcc4    0.303    3.84   5.24 4.73e-06  6.32e-03  4.03
-    ## Mbtps2  -0.191    5.60  -5.07 8.37e-06  9.24e-03  3.51
+    ##              logFC  AveExpr          t      P.Value    adj.P.Val         B
+    ## Chd8    -0.5752382 7.119133 -11.017655 5.356310e-14 6.512201e-10 19.912599
+    ## Dnajc4   0.3106221 3.547794   6.238283 1.766439e-07 8.757041e-04  6.970287
+    ## Vrk3     0.2311065 5.012246   6.177633 2.160810e-07 8.757041e-04  6.790083
+    ## Git1     0.1629843 7.868139   5.777619 8.153323e-07 2.441004e-03  5.600334
+    ## Lrrc48   0.3562182 3.053709   5.714836 1.003868e-06 2.441004e-03  5.413653
+    ## Parva    0.2575209 6.027494   5.571887 1.610920e-06 3.264261e-03  4.988965
+    ## Hmgcll1 -0.2502977 4.687811  -5.351353 3.333385e-06 5.789614e-03  4.335408
+    ## Anxa11   0.3610589 2.149160   5.292146 4.049474e-06 6.154188e-03  4.160420
+    ## Xrcc4    0.3031190 3.842087   5.244602 4.733310e-06 6.394175e-03  4.020084
+    ## Mbtps2  -0.1906449 5.601007  -5.070478 8.365993e-06 9.352325e-03  3.507730
 
 ``` r
-signif(topTable(limmatrend, number = 10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")),3)
+topTable(limmatrend, number = 10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77"))
 ```
 
-    ##        DPC14.5 DPC17.5 DPC21 DPC77 AveExpr    F  P.Value adj.P.Val
-    ## Rps23    -7.24   -7.76 -7.78 -7.60    1.73 3180 9.83e-52  1.18e-47
-    ## Rps13    -7.20   -7.54 -7.56 -7.54    1.79 2840 1.03e-50  6.21e-47
-    ## Rpl28    -7.54   -7.48 -7.10 -7.80    2.21 2490 1.63e-49  6.52e-46
-    ## Rps29    -7.58   -7.60 -7.49 -7.76    1.80 2310 7.86e-49  2.36e-45
-    ## Rpl19    -7.38   -7.82 -7.93 -7.59    2.30 2220 1.92e-48  4.62e-45
-    ## Gapdh    -8.09   -8.31 -7.88 -7.93    3.10 2060 9.25e-48  1.85e-44
-    ## Rpsa     -6.63   -7.35 -7.51 -8.04    3.93 1960 2.40e-47  4.12e-44
-    ## Rpl36a   -6.17   -6.48 -6.63 -6.32    1.68 1870 6.45e-47  9.69e-44
-    ## Rps16    -6.28   -6.65 -6.57 -6.80    1.86 1830 1.03e-46  1.38e-43
-    ## Thy1      2.92    5.64  6.76  9.53    5.07 1810 1.37e-46  1.65e-43
+    ##          DPC14.5   DPC17.5     DPC21     DPC77  AveExpr        F      P.Value
+    ## Rps23  -7.237540 -7.758854 -7.782795 -7.604795 1.733041 3175.401 9.812187e-52
+    ## Rps13  -7.202030 -7.542979 -7.559957 -7.544650 1.794908 2839.630 1.029680e-50
+    ## Rpl28  -7.535123 -7.480228 -7.102245 -7.795321 2.206374 2490.655 1.621811e-49
+    ## Rps29  -7.583209 -7.604292 -7.489372 -7.763519 1.804189 2310.931 7.826065e-49
+    ## Rpl19  -7.379356 -7.824504 -7.931219 -7.590126 2.297790 2214.734 1.911976e-48
+    ## Gapdh  -8.093534 -8.309696 -7.879648 -7.930588 3.097617 2055.142 9.197127e-48
+    ## Rpsa   -6.629828 -7.346022 -7.506683 -8.041747 3.934573 1964.021 2.383368e-47
+    ## Rpl36a -6.173804 -6.480819 -6.628506 -6.324045 1.683624 1873.345 6.428290e-47
+    ## Rps16  -6.283539 -6.647790 -6.574086 -6.800874 1.855359 1831.899 1.028031e-46
+    ## Thy1    2.917807  5.643646  6.762117  9.528292 5.067655 1807.779 1.357675e-46
+    ##           adj.P.Val
+    ## Rps23  1.192966e-47
+    ## Rps13  6.259423e-47
+    ## Rpl28  6.572658e-46
+    ## Rps29  2.378733e-45
+    ## Rpl19  4.649161e-45
+    ## Gapdh  1.863644e-44
+    ## Rpsa   4.139569e-44
+    ## Rpl36a 9.769393e-44
+    ## Rps16  1.388755e-43
+    ## Thy1   1.650662e-43
 
 ``` r
+# add limma trend results to master results table
 difmethods$limmatrend <- topTable(limmatrend, number = Inf, coef = "GroupMu", sort = "none")$P.Value 
 ```
 
@@ -750,8 +799,8 @@ difmethods$limmatrend <- topTable(limmatrend, number = Inf, coef = "GroupMu", so
 
 Now we introduce the weighted regression method suggested by the limma
 developers to utilize the raw counts (instead of using log-transformed
-CPM values). Here we start to get into the mean-variance relationships
-(a form of heteroscedasticity) and how it can be addressed.
+CPM values) - this is called voom. It’s worth noting that in the
+original voom paper, voom was a bit better than ‘trend’.
 
 Note that we are using the `counts` slot of `assays(sumexp)` now instead
 of the `log2cpm` slot.
@@ -781,54 +830,77 @@ Now we’ll look at the top 10 signficant for Sex, Group, and DPC, and add
 the p-values for the Group coefficient to our comparison table.
 
 ``` r
-signif(topTable(lmvoom, number = 10, coef = "SexF", sort.by = "p") ,3)
+topTable(lmvoom, number = 10, coef = "SexF", sort.by = "p") 
 ```
 
-    ##                 logFC AveExpr      t  P.Value adj.P.Val     B
-    ## Kdm5d         -10.400  -0.806 -41.90 4.23e-36  5.08e-32 44.60
-    ## Uty            -9.370  -1.080 -38.20 1.90e-34  1.14e-30 44.00
-    ## Ddx3y         -10.500  -0.344 -33.30 5.50e-32  2.21e-28 42.30
-    ## Xist            9.970   4.700  23.00 1.57e-25  4.72e-22 41.20
-    ## Eif2s3y       -10.400  -0.734 -19.40 1.04e-22  2.49e-19 32.70
-    ## Kdm6a           0.555   5.600  10.10 7.23e-13  1.45e-09 19.10
-    ## Eif2s3x         0.671   4.190   8.65 6.64e-11  1.14e-07 14.70
-    ## 5530601H04Rik   0.517   3.650   6.27 1.57e-07  2.36e-04  7.03
-    ## Kdm5c           0.321   7.330   6.04 3.35e-07  4.47e-04  5.94
-    ## Pbdc1           0.380   4.730   5.15 6.37e-06  7.66e-03  3.21
+    ##                     logFC    AveExpr          t      P.Value    adj.P.Val
+    ## Kdm5d         -10.4047655 -0.8064703 -41.894609 4.324862e-36 5.258168e-32
+    ## Uty            -9.3716955 -1.0833585 -38.195359 1.960770e-34 1.191952e-30
+    ## Ddx3y         -10.5200807 -0.3448537 -33.272254 5.608562e-32 2.272963e-28
+    ## Xist            9.9731580  4.6980141  22.981114 1.569246e-25 4.769722e-22
+    ## Eif2s3y       -10.4319614 -0.7349739 -19.418654 1.068643e-22 2.598513e-19
+    ## Kdm6a           0.5553789  5.5955184  10.117086 7.248421e-13 1.468772e-09
+    ## Eif2s3x         0.6709886  4.1841419   8.651544 6.592784e-11 1.145072e-07
+    ## 5530601H04Rik   0.5172651  3.6503268   6.272796 1.559888e-07 2.370639e-04
+    ## Kdm5c           0.3213212  7.3247264   6.042268 3.358159e-07 4.536499e-04
+    ## Pbdc1           0.3797234  4.7248174   5.151175 6.391060e-06 7.770251e-03
+    ##                       B
+    ## Kdm5d         44.563162
+    ## Uty           43.963588
+    ## Ddx3y         42.273439
+    ## Xist          41.166512
+    ## Eif2s3y       32.671118
+    ## Kdm6a         19.049053
+    ## Eif2s3x       14.677173
+    ## 5530601H04Rik  7.031586
+    ## Kdm5c          5.936412
+    ## Pbdc1          3.206580
 
 ``` r
-signif(topTable(lmvoom, number = 10, coef = "GroupMu", sort.by = "p") ,3)
+topTable(lmvoom, number = 10, coef = "GroupMu", sort.by = "p") 
 ```
 
-    ##         logFC AveExpr      t  P.Value adj.P.Val     B
-    ## Chd8   -0.577    7.12 -11.00 5.51e-14  6.62e-10 21.70
-    ## Plin4   2.070   -1.86   7.51 2.58e-09  1.36e-05  8.36
-    ## Anxa11  0.592    1.68   7.43 3.41e-09  1.36e-05 10.40
-    ## Dnajc4  0.360    3.43   6.46 8.45e-08  2.54e-04  7.84
-    ## Vrk3    0.230    4.98   5.98 4.17e-07  1.00e-03  6.34
-    ## Lrrc48  0.435    2.85   5.89 5.60e-07  1.11e-03  6.01
-    ## Xdh     0.986   -2.58   5.84 6.48e-07  1.11e-03  4.50
-    ## Git1    0.163    7.87   5.78 7.91e-07  1.19e-03  5.65
-    ## Etnppl  0.820   -3.58   5.75 8.93e-07  1.19e-03  4.67
-    ## Parva   0.265    6.01   5.70 1.06e-06  1.27e-03  5.41
+    ##             logFC   AveExpr          t      P.Value    adj.P.Val         B
+    ## Chd8   -0.5775219  7.117845 -10.997813 5.488676e-14 6.673132e-10 21.655891
+    ## Plin4   2.0680684 -1.859445   7.529917 2.443131e-09 1.389053e-05  8.375762
+    ## Anxa11  0.5918950  1.677268   7.426542 3.427503e-09 1.389053e-05 10.361997
+    ## Dnajc4  0.3601611  3.426896   6.458451 8.413009e-08 2.557134e-04  7.844650
+    ## Vrk3    0.2297994  4.975781   5.975140 4.197830e-07 1.020744e-03  6.337295
+    ## Lrrc48  0.4349115  2.853108   5.887879 5.609919e-07 1.096707e-03  6.011005
+    ## Xdh     0.9856836 -2.581746   5.852265 6.314318e-07 1.096707e-03  4.507211
+    ## Git1    0.1632624  7.871134   5.782047 7.971839e-07 1.185210e-03  5.649183
+    ## Etnppl  0.8203707 -3.585293   5.753165 8.773553e-07 1.185210e-03  4.667148
+    ## Parva   0.2649303  6.013305   5.697285 1.055961e-06 1.283838e-03  5.412379
 
 ``` r
-signif(topTable(lmvoom, number = 10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")),3)
+topTable(lmvoom, number = 10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77"))
 ```
 
-    ##       DPC14.5 DPC17.5 DPC21 DPC77 AveExpr    F  P.Value adj.P.Val
-    ## Rpsa    -6.81   -7.62 -7.81 -8.51    3.72 2030 9.71e-48  1.17e-43
-    ## Gapdh   -8.66   -9.00 -8.35 -8.41    2.65 1610 1.35e-45  8.09e-42
-    ## Rps7    -6.16   -6.53 -6.88 -7.79    2.88 1390 2.69e-44  1.08e-40
-    ## Hmgb1   -4.24   -5.31 -5.77 -6.27    4.83 1340 6.02e-44  1.81e-40
-    ## Rpl21   -6.30   -6.32 -6.22 -7.09    3.40 1320 8.70e-44  2.09e-40
-    ## Rpl10   -6.58   -7.04 -6.72 -8.52    2.79 1120 2.64e-42  5.30e-39
-    ## Rpl28   -8.80   -8.69 -7.91 -9.58    1.22 1100 3.84e-42  6.14e-39
-    ## Rpl17   -6.80   -7.17 -7.39 -8.12    2.62 1100 4.09e-42  6.14e-39
-    ## Rpl11   -7.04   -8.46 -8.11 -8.31    2.07 1090 4.93e-42  6.58e-39
-    ## Cplx1    2.28    3.47  3.90  6.11    6.91 1020 1.66e-41  1.99e-38
+    ##         DPC14.5   DPC17.5     DPC21     DPC77  AveExpr        F      P.Value
+    ## Rpsa  -6.806586 -7.623041 -7.805699 -8.511633 3.719540 2030.582 9.513641e-48
+    ## Gapdh -8.661437 -8.996751 -8.354372 -8.411491 2.644143 1605.984 1.322206e-45
+    ## Rps7  -6.162970 -6.525516 -6.875998 -7.789751 2.878267 1392.494 2.646586e-44
+    ## Hmgb1 -4.243950 -5.305309 -5.766272 -6.269627 4.826733 1339.932 5.936062e-44
+    ## Rpl21 -6.300246 -6.319518 -6.221577 -7.094800 3.402056 1317.451 8.467023e-44
+    ## Rpl10 -6.580372 -7.041615 -6.718519 -8.516807 2.793617 1119.141 2.591735e-42
+    ## Rpl28 -8.801134 -8.692187 -7.910915 -9.580743 1.219016 1099.457 3.759044e-42
+    ## Rpl17 -6.796053 -7.165476 -7.389536 -8.119260 2.619785 1096.048 4.011817e-42
+    ## Rpl11 -7.041911 -8.459102 -8.114796 -8.306671 2.072771 1086.459 4.822709e-42
+    ## Cplx1  2.282539  3.468638  3.895237  6.105746 6.910190 1024.720 1.642220e-41
+    ##          adj.P.Val
+    ## Rpsa  1.156668e-43
+    ## Gapdh 8.037690e-42
+    ## Rps7  1.072573e-40
+    ## Hmgb1 1.804266e-40
+    ## Rpl21 2.058841e-40
+    ## Rpl10 5.251719e-39
+    ## Rpl28 6.096959e-39
+    ## Rpl17 6.096959e-39
+    ## Rpl11 6.514943e-39
+    ## Cplx1 1.996611e-38
 
 ``` r
+# add limma voom results to master results table
 difmethods$limmavoom <- topTable(lmvoom, number = Inf, coef = "GroupMu", sort = "none")$P.Value 
 ```
 
@@ -852,54 +924,77 @@ plotSA(limmavoomTMM, main= "limma voom + TMM")
 ![](examples-RNAseq_files/figure-gfm/voomnorm-1.png)<!-- -->
 
 ``` r
-signif(topTable(limmavoomTMM, number = 10, coef = "SexF", sort.by = "p") ,3)
+topTable(limmavoomTMM, number = 10, coef = "SexF", sort.by = "p") 
 ```
 
-    ##                 logFC AveExpr      t  P.Value adj.P.Val     B
-    ## Kdm5d         -10.400  -0.806 -42.60 2.70e-36  3.25e-32 44.90
-    ## Uty            -9.370  -1.080 -39.40 6.51e-35  3.91e-31 44.50
-    ## Ddx3y         -10.500  -0.344 -33.40 5.27e-32  2.11e-28 42.50
-    ## Xist            9.950   4.700  23.00 1.60e-25  4.80e-22 41.30
-    ## Eif2s3y       -10.400  -0.734 -19.10 2.41e-22  5.79e-19 32.40
-    ## Kdm6a           0.539   5.600  10.40 3.22e-13  6.44e-10 19.80
-    ## Eif2s3x         0.654   4.190   8.42 1.41e-10  2.42e-07 13.90
-    ## 5530601H04Rik   0.500   3.650   6.33 1.29e-07  1.93e-04  7.20
-    ## Kdm5c           0.307   7.330   5.58 1.56e-06  2.08e-03  4.40
-    ## Pbdc1           0.362   4.730   5.13 6.79e-06  8.17e-03  3.12
+    ##                     logFC    AveExpr          t      P.Value    adj.P.Val
+    ## Kdm5d         -10.4042598 -0.8064703 -42.536965 2.716825e-36 3.303116e-32
+    ## Uty            -9.3721517 -1.0833585 -39.357050 6.670126e-35 4.054770e-31
+    ## Ddx3y         -10.5202698 -0.3448537 -33.450387 5.178505e-32 2.098675e-28
+    ## Xist            9.9484991  4.6980141  23.071749 1.484838e-25 4.513167e-22
+    ## Eif2s3y       -10.4337306 -0.7349739 -19.069890 2.310250e-22 5.617604e-19
+    ## Kdm6a           0.5388143  5.5955184  10.389251 3.338657e-13 6.765232e-10
+    ## Eif2s3x         0.6542045  4.1841419   8.406566 1.467302e-10 2.548494e-07
+    ## 5530601H04Rik   0.4999480  3.6503268   6.325323 1.324481e-07 2.012881e-04
+    ## Kdm5c           0.3071199  7.3247264   5.576876 1.585991e-06 2.142497e-03
+    ## Pbdc1           0.3618295  4.7248174   5.124262 7.023776e-06 8.539507e-03
+    ##                       B
+    ## Kdm5d         44.896253
+    ## Uty           44.475937
+    ## Ddx3y         42.502272
+    ## Xist          41.365163
+    ## Eif2s3y       32.360907
+    ## Kdm6a         19.807940
+    ## Eif2s3x       13.864846
+    ## 5530601H04Rik  7.168571
+    ## Kdm5c          4.383454
+    ## Pbdc1          3.084287
 
 ``` r
-signif(topTable(limmavoomTMM, number = 10, coef = "GroupMu", sort.by = "p") ,3)
+topTable(limmavoomTMM, number = 10, coef = "GroupMu", sort.by = "p") 
 ```
 
-    ##          logFC AveExpr      t  P.Value adj.P.Val     B
-    ## Chd8    -0.587    7.12 -11.30 2.26e-14  2.71e-10 22.50
-    ## Plin4    2.080   -1.86   7.60 2.01e-09  1.21e-05  8.53
-    ## Anxa11   0.588    1.68   7.21 7.13e-09  2.86e-05  9.74
-    ## Dnajc4   0.350    3.43   6.85 2.36e-08  7.08e-05  9.04
-    ## Vrk3     0.220    4.98   6.02 3.70e-07  8.91e-04  6.45
-    ## Etnppl   0.830   -3.58   5.86 6.19e-07  1.13e-03  4.97
-    ## Xdh      0.998   -2.58   5.84 6.61e-07  1.13e-03  4.49
-    ## Hmgcll1 -0.278    4.64  -5.75 8.99e-07  1.35e-03  5.61
-    ## Lrrc48   0.426    2.85   5.69 1.10e-06  1.47e-03  5.40
-    ## Mtrr     0.243    3.91   5.60 1.46e-06  1.75e-03  5.18
+    ##              logFC   AveExpr          t      P.Value    adj.P.Val         B
+    ## Chd8    -0.5870558  7.117845 -11.321242 2.267412e-14 2.756720e-10 22.494110
+    ## Plin4    2.0846016 -1.859445   7.606572 1.935009e-09 1.176292e-05  8.502431
+    ## Anxa11   0.5874013  1.677268   7.216964 6.930134e-09 2.808552e-05  9.743049
+    ## Dnajc4   0.3497505  3.426896   6.838114 2.418152e-08 7.349974e-05  9.007544
+    ## Vrk3     0.2195629  4.975781   5.988008 4.061104e-07 9.874979e-04  6.368986
+    ## Etnppl   0.8282525 -3.585293   5.852876 6.359142e-07 1.143753e-03  4.916617
+    ## Xdh      0.9959300 -2.581746   5.842344 6.585187e-07 1.143753e-03  4.463451
+    ## Hmgcll1 -0.2776781  4.639676  -5.738006 9.305967e-07 1.414274e-03  5.581892
+    ## Lrrc48   0.4250691  2.853108   5.692887 1.080567e-06 1.459726e-03  5.411957
+    ## Mtrr     0.2427254  3.904952   5.581369 1.562616e-06 1.899829e-03  5.117930
 
 ``` r
-signif(topTable(limmavoomTMM, number = 10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")),3)
+topTable(limmavoomTMM, number = 10, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77"))
 ```
 
-    ##       DPC14.5 DPC17.5 DPC21 DPC77 AveExpr    F  P.Value adj.P.Val
-    ## Rpsa    -6.92   -7.64 -7.79 -8.29    3.72 2140 4.32e-48  5.20e-44
-    ## Gapdh   -8.77   -9.01 -8.34 -8.20    2.65 1650 9.67e-46  5.81e-42
-    ## Rps7    -6.27   -6.54 -6.86 -7.57    2.88 1490 7.88e-45  3.16e-41
-    ## Rpl21   -6.41   -6.34 -6.21 -6.88    3.40 1360 5.58e-44  1.68e-40
-    ## Hmgb1   -4.36   -5.32 -5.75 -6.05    4.83 1320 1.01e-43  2.43e-40
-    ## Rpl10   -6.69   -7.05 -6.71 -8.30    2.79 1220 5.72e-43  1.15e-39
-    ## Rpl17   -6.91   -7.18 -7.38 -7.90    2.62 1190 9.56e-43  1.64e-39
-    ## Rpl28   -8.91   -8.70 -7.90 -9.36    1.22 1160 1.58e-42  2.38e-39
-    ## Rpl11   -7.15   -8.47 -8.10 -8.09    2.07 1150 1.99e-42  2.65e-39
-    ## Rpl31   -5.04   -5.28 -5.72 -5.66    3.41 1090 5.46e-42  6.56e-39
+    ##         DPC14.5   DPC17.5     DPC21     DPC77  AveExpr        F      P.Value
+    ## Rpsa  -6.919406 -7.641856 -7.795462 -8.297036 3.719540 2136.564 4.181135e-48
+    ## Gapdh -8.771227 -9.010387 -8.344980 -8.204446 2.644143 1655.034 8.878789e-46
+    ## Rps7  -6.274067 -6.543071 -6.865180 -7.579119 2.878267 1492.614 7.736043e-45
+    ## Rpl21 -6.412828 -6.338060 -6.210448 -6.887297 3.402056 1360.796 5.363740e-44
+    ## Hmgb1 -4.356194 -5.324815 -5.755497 -6.058639 4.826733 1321.720 9.870597e-44
+    ## Rpl10 -6.689510 -7.055086 -6.708512 -8.303337 2.793617 1218.378 5.421680e-43
+    ## Rpl17 -6.906711 -7.179531 -7.377949 -7.908791 2.619785 1188.216 9.158148e-43
+    ## Rpl28 -8.909694 -8.703818 -7.900730 -9.370952 1.219016 1162.739 1.440874e-42
+    ## Rpl11 -7.152108 -8.474612 -8.105295 -8.093362 2.072771 1149.471 1.831569e-42
+    ## Rpl31 -5.040360 -5.276260 -5.723734 -5.669920 3.410514 1091.018 5.451625e-42
+    ##          adj.P.Val
+    ## Rpsa  5.083424e-44
+    ## Gapdh 5.397416e-42
+    ## Rps7  3.135160e-41
+    ## Rpl21 1.630309e-40
+    ## Hmgb1 2.400134e-40
+    ## Rpl10 1.098613e-39
+    ## Rpl17 1.590640e-39
+    ## Rpl28 2.189768e-39
+    ## Rpl11 2.474246e-39
+    ## Rpl31 6.628086e-39
 
 ``` r
+# add limma voom with TMM results to master results table
 difmethods$limmavoomTMM <- topTable(limmavoomTMM, number = Inf, coef = "GroupMu", 
                                     sort = "none")$P.Value 
 ```
@@ -925,11 +1020,12 @@ dge <- calcNormFactors(dge, method="TMM")
 hist(dge$samples$norm.factors, breaks = 10, xlab = "Norm factor", main = "TMM Normalization factors")
 ```
 
-![](examples-RNAseq_files/figure-gfm/edgerLR-1.png)<!-- --> The TMM
-normalization factors are values approximately centered at 1. Values
-less than 1 indicate that high-count genes are monopolizing the “read
-space”. Note that if we have a large fraction (i.e. greater than 50%)
-differentially expressed genes, this violates the assumptions of
+![](examples-RNAseq_files/figure-gfm/edgerLR-1.png)<!-- -->
+
+The TMM normalization factors are values approximately centered at 1.
+Values less than 1 indicate that high-count genes are monopolizing the
+“read space”. Note that if we have a large fraction (i.e. greater than
+50%) differentially expressed genes, this violates the assumptions of
 normalization methods like TMM.
 
 We proceed by first estimating dispersions (recall that these are
@@ -944,7 +1040,7 @@ dge <- estimateDisp(dge, design = modm, robust = TRUE)
 range(dge$prior.df)
 ```
 
-    ## [1] 1.486164 4.597337
+    ## [1] 1.456025 4.617746
 
 ``` r
 # plot mean var trend
@@ -961,65 +1057,66 @@ add the p-values for the Group covariate to our results dataframe.
 ``` r
 lfit <- glmFit(dge, modm)
 
-topTags(glmLRT(lfit, coef = "SexF"))$table %>% signif(3)
+topTags(glmLRT(lfit, coef = "SexF"))$table 
 ```
 
-    ##                 logFC logCPM     LR    PValue       FDR
-    ## Kdm5d         -10.700   4.00 6230.0  0.00e+00  0.00e+00
-    ## Eif2s3y       -10.600   4.09 1650.0  0.00e+00  0.00e+00
-    ## Ddx3y         -10.500   4.59 4340.0  0.00e+00  0.00e+00
-    ## Uty            -9.630   3.16 4350.0  0.00e+00  0.00e+00
-    ## Xist            9.850   8.31 1390.0 3.02e-303 7.25e-300
-    ## Kdm6a           0.534   5.70   99.6  1.90e-23  3.80e-20
-    ## Eif2s3x         0.664   4.68   64.2  1.14e-15  1.95e-12
-    ## 5530601H04Rik   0.514   3.73   40.9  1.63e-10  2.45e-07
-    ## Kdm5c           0.308   7.41   27.8  1.36e-07  1.82e-04
-    ## Pbdc1           0.368   4.90   25.0  5.77e-07  6.94e-04
+    ##                     logFC   logCPM         LR        PValue           FDR
+    ## Kdm5d         -10.7195373 3.996977 6216.83218  0.000000e+00  0.000000e+00
+    ## Eif2s3y       -10.5508575 4.090526 1655.35313  0.000000e+00  0.000000e+00
+    ## Ddx3y         -10.4683213 4.584310 4335.45584  0.000000e+00  0.000000e+00
+    ## Uty            -9.6350564 3.159288 4343.85802  0.000000e+00  0.000000e+00
+    ## Xist            9.8523916 8.311049 1387.84343 9.206303e-304 2.238605e-300
+    ## Kdm6a           0.5338620 5.698533   99.33969  2.127021e-23  4.310053e-20
+    ## Eif2s3x         0.6635603 4.679478   63.93119  1.288419e-15  2.237800e-12
+    ## 5530601H04Rik   0.5136595 3.724893   40.72263  1.754440e-10  2.666310e-07
+    ## Kdm5c           0.3082027 7.410249   27.69496  1.420322e-07  1.918697e-04
+    ## Pbdc1           0.3683036 4.895747   24.94333  5.904029e-07  7.178119e-04
 
 ``` r
-topTags(glmLRT(lfit, coef = "GroupMu"))$table %>% signif(3)
+topTags(glmLRT(lfit, coef = "GroupMu"))$table 
 ```
 
-    ##          logFC logCPM    LR   PValue      FDR
-    ## Chd8    -0.590   7.17 123.0 1.55e-28 1.86e-24
-    ## Dnajc4   0.339   3.48  40.6 1.91e-10 1.15e-06
-    ## Vrk3     0.223   5.02  33.5 7.01e-09 2.50e-05
-    ## Anxa11   0.519   2.96  33.2 8.32e-09 2.50e-05
-    ## Hmgcll1 -0.275   4.68  29.5 5.47e-08 1.31e-04
-    ## Xrcc4    0.322   3.80  28.3 1.06e-07 2.13e-04
-    ## Lrrc48   0.407   3.07  27.6 1.50e-07 2.58e-04
-    ## Mtrr     0.237   3.94  26.1 3.17e-07 4.50e-04
-    ## Usp11   -0.268   7.33  25.8 3.78e-07 4.50e-04
-    ## Parva    0.249   6.16  25.8 3.86e-07 4.50e-04
+    ##              logFC   logCPM        LR       PValue          FDR
+    ## Chd8    -0.5906606 7.168659 122.72149 1.604640e-28 1.950921e-24
+    ## Dnajc4   0.3386763 3.479594  40.50272 1.963426e-10 1.193567e-06
+    ## Vrk3     0.2232005 5.019842  33.24769 8.113626e-09 2.471321e-05
+    ## Anxa11   0.5191569 2.959509  33.24360 8.130682e-09 2.471321e-05
+    ## Hmgcll1 -0.2749039 4.677392  29.43187 5.791743e-08 1.408320e-04
+    ## Xrcc4    0.3221447 3.798639  28.12414 1.137780e-07 2.305522e-04
+    ## Lrrc48   0.4072922 3.067613  27.64926 1.454279e-07 2.525874e-04
+    ## Mtrr     0.2372077 3.938010  25.95035 3.503114e-07 4.639117e-04
+    ## Parva    0.2483251 6.155075  25.86456 3.662322e-07 4.639117e-04
+    ## Usp11   -0.2683721 7.332362  25.74941 3.887462e-07 4.639117e-04
 
 ``` r
-topTags(glmLRT(lfit, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")))$table %>% signif(3)
+topTags(glmLRT(lfit, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")))$table
 ```
 
-    ##        logFC.DPC14.5 logFC.DPC17.5 logFC.DPC21 logFC.DPC77 logCPM    LR PValue
-    ## Rps29          -9.64         -9.41       -9.14      -10.30   5.60  8760      0
-    ## Rpl5           -9.08         -9.66       -9.37       -9.37   6.09  3130      0
-    ## Rpl28          -8.94         -8.68       -7.90       -9.38   5.88 14400      0
-    ## Gapdh          -8.77         -9.00       -8.33       -8.19   7.25  9430      0
-    ## Rps13          -8.68         -9.80       -9.80       -9.32   5.46  9910      0
-    ## Rps23          -8.63        -10.70      -10.60       -9.74   5.55 12100      0
-    ## Rps17          -8.40         -8.58       -8.85       -9.18   5.81  7860      0
-    ## Rpl19          -8.27         -9.00       -9.27       -8.41   6.18 11300      0
-    ## Rpl24          -7.98         -7.92       -7.98       -8.78   4.87  2950      0
-    ## Rpl23a         -7.84         -7.92       -7.79       -6.54   5.06  2620      0
-    ##        FDR
-    ## Rps29    0
-    ## Rpl5     0
-    ## Rpl28    0
-    ## Gapdh    0
-    ## Rps13    0
-    ## Rps23    0
-    ## Rps17    0
-    ## Rpl19    0
-    ## Rpl24    0
-    ## Rpl23a   0
+    ##        logFC.DPC14.5 logFC.DPC17.5 logFC.DPC21 logFC.DPC77   logCPM        LR
+    ## Rps29      -9.637965     -9.406262   -9.144634  -10.267744 5.596325  8805.983
+    ## Rpl5       -9.081222     -9.665479   -9.369362   -9.381689 6.094013  3141.591
+    ## Rpl28      -8.936640     -8.683710   -7.899989   -9.382923 5.876428 14388.277
+    ## Gapdh      -8.766668     -9.000826   -8.334994   -8.193280 7.253398  9451.582
+    ## Rps13      -8.674700     -9.796170   -9.804056   -9.323131 5.464826  9948.090
+    ## Rps23      -8.625074    -10.714210  -10.628530   -9.742579 5.547729 12120.883
+    ## Rps17      -8.402943     -8.581919   -8.856246   -9.183866 5.810372  7887.321
+    ## Rpl19      -8.264809     -8.996156   -9.267205   -8.414900 6.182804 11337.436
+    ## Rpl24      -7.980029     -7.917214   -7.979188   -8.784711 4.867295  2964.703
+    ## Rpl23a     -7.843216     -7.924164   -7.788970   -6.543794 5.056430  2631.553
+    ##        PValue FDR
+    ## Rps29       0   0
+    ## Rpl5        0   0
+    ## Rpl28       0   0
+    ## Gapdh       0   0
+    ## Rps13       0   0
+    ## Rps23       0   0
+    ## Rps17       0   0
+    ## Rpl19       0   0
+    ## Rpl24       0   0
+    ## Rpl23a      0   0
 
 ``` r
+# add edgeRlrt results to master results table
 difmethods$edgeRlrt <- topTags(glmLRT(lfit, coef = "GroupMu"), n=Inf, sort.by = "none")$table$PValue 
 ```
 
@@ -1064,65 +1161,66 @@ dge <- estimateDisp(dge, design = modm, robust = TRUE)
 
 qfit <- glmQLFit(dge, modm)
 
-topTags(glmQLFTest(qfit, coef = "SexF"))$table %>% signif(3)
+topTags(glmQLFTest(qfit, coef = "SexF"))$table
 ```
 
-    ##                 logFC logCPM      F   PValue      FDR
-    ## Kdm5d         -10.700   4.00 4790.0 1.59e-44 1.91e-40
-    ## Ddx3y         -10.500   4.59 3640.0 4.57e-42 2.75e-38
-    ## Uty            -9.640   3.16 2750.0 1.45e-39 5.82e-36
-    ## Eif2s3y       -10.500   4.09 1950.0 1.51e-36 4.54e-33
-    ## Xist            9.840   8.31 1770.0 1.18e-35 2.83e-32
-    ## Kdm6a           0.533   5.70  107.0 4.41e-13 8.83e-10
-    ## Eif2s3x         0.664   4.68   65.8 4.24e-10 7.28e-07
-    ## 5530601H04Rik   0.515   3.73   43.0 6.53e-08 9.81e-05
-    ## Kdm5c           0.308   7.41   29.9 2.40e-06 3.21e-03
-    ## Pbdc1           0.368   4.90   26.2 7.32e-06 8.80e-03
+    ##                     logFC   logCPM          F       PValue          FDR
+    ## Kdm5d         -10.7174041 3.996977 4784.31800 1.578049e-44 1.918592e-40
+    ## Ddx3y         -10.4642939 4.584310 3625.08292 4.751475e-42 2.888421e-38
+    ## Uty            -9.6449085 3.159288 2744.64012 1.427756e-39 5.786218e-36
+    ## Eif2s3y       -10.5280880 4.090526 1956.06459 1.436413e-36 4.365976e-33
+    ## Xist            9.8363495 8.311049 1767.71446 1.124838e-35 2.735156e-32
+    ## Kdm6a           0.5327577 5.698533  107.11350 4.536479e-13 9.192419e-10
+    ## Eif2s3x         0.6636832 4.679478   65.60040 4.403407e-10 7.648089e-07
+    ## 5530601H04Rik   0.5147258 3.724893   42.93019 6.694390e-08 1.017380e-04
+    ## Kdm5c           0.3082256 7.410249   29.76853 2.469134e-06 3.335525e-03
+    ## Pbdc1           0.3683890 4.895747   26.19144 7.443244e-06 9.049497e-03
 
 ``` r
-topTags(glmQLFTest(qfit, coef = "GroupMu"))$table %>% signif(3)
+topTags(glmQLFTest(qfit, coef = "GroupMu"))$table
 ```
 
-    ##          logFC logCPM     F   PValue      FDR
-    ## Chd8    -0.591   7.17 131.0 1.90e-14 2.28e-10
-    ## Dnajc4   0.334   3.48  43.8 5.42e-08 3.26e-04
-    ## Vrk3     0.227   5.02  39.3 1.72e-07 6.90e-04
-    ## Hmgcll1 -0.273   4.68  32.4 1.13e-06 3.40e-03
-    ## Anxa11   0.499   2.96  31.1 1.67e-06 3.68e-03
-    ## Xrcc4    0.321   3.80  30.8 1.84e-06 3.68e-03
-    ## Lrrc48   0.408   3.07  27.9 4.35e-06 5.54e-03
-    ## Usp11   -0.268   7.33  27.7 4.57e-06 5.54e-03
-    ## Myef2   -0.261   6.47  27.7 4.64e-06 5.54e-03
-    ## Parva    0.248   6.16  27.4 5.11e-06 5.54e-03
+    ##              logFC   logCPM         F       PValue          FDR
+    ## Chd8    -0.5907893 7.168659 131.37222 1.915567e-14 2.328946e-10
+    ## Dnajc4   0.3338042 3.479594  43.87859 5.282809e-08 3.211419e-04
+    ## Vrk3     0.2266556 5.019842  38.93996 1.870674e-07 7.581219e-04
+    ## Hmgcll1 -0.2735182 4.677392  32.32170 1.164003e-06 3.537988e-03
+    ## Anxa11   0.4985994 2.959509  31.10828 1.658245e-06 3.830713e-03
+    ## Xrcc4    0.3212566 3.798639  30.66428 1.890465e-06 3.830713e-03
+    ## Lrrc48   0.4076515 3.067613  27.99588 4.233658e-06 5.778018e-03
+    ## Usp11   -0.2682525 7.332362  27.68852 4.655516e-06 5.778018e-03
+    ## Myef2   -0.2609406 6.466225  27.65248 4.707810e-06 5.778018e-03
+    ## Parva    0.2480610 6.155075  27.50144 4.933711e-06 5.778018e-03
 
 ``` r
-topTags(glmQLFTest(qfit, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")))$table %>% signif(3)
+topTags(glmQLFTest(qfit, coef = c("DPC14.5", "DPC17.5", "DPC21", "DPC77")))$table 
 ```
 
-    ##       logFC.DPC14.5 logFC.DPC17.5 logFC.DPC21 logFC.DPC77 logCPM    F   PValue
-    ## Rpl28         -8.94         -8.69       -7.90       -9.38   5.88 3010 1.55e-50
-    ## Rpsa          -6.88         -7.63       -7.79       -8.27   7.51 2550 4.55e-49
-    ## Gapdh         -8.77         -9.00       -8.33       -8.19   7.25 2400 1.61e-48
-    ## Rpl19         -8.27         -9.00       -9.27       -8.41   6.18 2350 2.50e-48
-    ## Rps7          -6.27         -6.54       -6.87       -7.56   6.04 2260 5.40e-48
-    ## Rps13         -8.68         -9.80       -9.80       -9.32   5.46 2150 1.52e-47
-    ## Rpl11         -7.10         -8.44       -8.11       -8.05   6.18 2050 4.03e-47
-    ## Rps23         -8.62        -10.70      -10.60       -9.72   5.55 2040 4.92e-47
-    ## Rps17         -8.40         -8.58       -8.86       -9.17   5.81 1920 1.57e-46
-    ## Rps29         -9.64         -9.40       -9.14      -10.30   5.60 1850 3.57e-46
-    ##            FDR
-    ## Rpl28 1.86e-46
-    ## Rpsa  2.74e-45
-    ## Gapdh 6.47e-45
-    ## Rpl19 7.51e-45
-    ## Rps7  1.30e-44
-    ## Rps13 3.04e-44
-    ## Rpl11 6.92e-44
-    ## Rps23 7.39e-44
-    ## Rps17 2.09e-43
-    ## Rps29 4.29e-43
+    ##       logFC.DPC14.5 logFC.DPC17.5 logFC.DPC21 logFC.DPC77   logCPM        F
+    ## Rpl28     -8.936340     -8.686645   -7.900251   -9.382342 5.876428 3001.044
+    ## Rpsa      -6.876661     -7.631417   -7.791064   -8.278304 7.510997 2547.620
+    ## Gapdh     -8.766341     -8.999792   -8.334946   -8.192467 7.253398 2402.727
+    ## Rpl19     -8.265044     -8.997104   -9.267438   -8.413620 6.182804 2347.862
+    ## Rps7      -6.269546     -6.543893   -6.872611   -7.567293 6.035293 2256.255
+    ## Rps13     -8.675073     -9.796394   -9.804063   -9.324877 5.464826 2158.557
+    ## Rpl11     -7.097496     -8.440054   -8.112254   -8.055585 6.177988 2053.325
+    ## Rps23     -8.621146    -10.709068  -10.630968   -9.728684 5.547729 2042.292
+    ## Rps17     -8.403311     -8.585531   -8.857564   -9.180149 5.810372 1921.873
+    ## Rps29     -9.640166     -9.400490   -9.144444  -10.272330 5.596325 1851.579
+    ##             PValue          FDR
+    ## Rpl28 1.553417e-50 1.888644e-46
+    ## Rpsa  4.603543e-49 2.798494e-45
+    ## Gapdh 1.545224e-48 6.262277e-45
+    ## Rpl19 2.491223e-48 7.572071e-45
+    ## Rps7  5.672039e-48 1.379213e-44
+    ## Rps13 1.416097e-47 2.869485e-44
+    ## Rpl11 3.977689e-47 6.756840e-44
+    ## Rps23 4.446021e-47 6.756840e-44
+    ## Rps17 1.560237e-46 2.107707e-43
+    ## Rps29 3.368154e-46 4.095002e-43
 
 ``` r
+# add edgeRquasi results to master results table
 difmethods$edgeRquasi <- topTags(glmQLFTest(qfit, coef = "GroupMu"), n=Inf, 
                                  sort.by = "none")$table$PValue 
 ```
@@ -1159,10 +1257,10 @@ dds
 ```
 
     ## class: DESeqDataSet 
-    ## dim: 12021 44 
+    ## dim: 12158 44 
     ## metadata(1): version
     ## assays(3): counts cpm log2cpm
-    ## rownames(12021): 0610007P14Rik 0610009B22Rik ... Zzef1 Zzz3
+    ## rownames(12158): 0610007P14Rik 0610009B22Rik ... Zzef1 Zzz3
     ## rowData names(0):
     ## colnames(44): Sample_ANAN001A Sample_ANAN001B ... Chd8.adult.S29
     ##   Chd8.adult.S31
@@ -1203,6 +1301,7 @@ plot(colData(dds)$sizeFactor, colSums(counts), pch = 20,
 ```
 
 ![](examples-RNAseq_files/figure-gfm/unnamed-chunk-22-3.png)<!-- -->
+
 There’s not a huge amount of agreement between the DESeq2 size factors
 and the TMM normalization factors. The DESeq2 factors are much more
 correlated with depth than TMM.
@@ -1249,14 +1348,15 @@ head( deseq_group[ order(deseq_group$pvalue), ] )
     ## DataFrame with 6 rows and 6 columns
     ##          baseMean log2FoldChange     lfcSE      stat      pvalue        padj
     ##         <numeric>      <numeric> <numeric> <numeric>   <numeric>   <numeric>
-    ## Chd8     3559.587      -0.595634 0.0530429 -11.22929 2.92834e-29 3.51928e-25
-    ## Dnajc4    276.170       0.335255 0.0511633   6.55264 5.65275e-11 3.39674e-07
-    ## Vrk3      799.698       0.218074 0.0344039   6.33865 2.31786e-10 9.28535e-07
-    ## Hmgcll1   633.362      -0.279230 0.0493657  -5.65636 1.54618e-08 4.64549e-05
-    ## Anxa11    195.354       0.515134 0.0930001   5.53907 3.04078e-08 7.30882e-05
-    ## Xrcc4     343.157       0.317841 0.0581397   5.46685 4.58110e-08 9.17595e-05
+    ## Chd8     3559.907      -0.595924 0.0531048 -11.22165 3.19249e-29 3.80513e-25
+    ## Dnajc4    276.096       0.334895 0.0512012   6.54076 6.12065e-11 3.64760e-07
+    ## Vrk3      799.700       0.217710 0.0345255   6.30578 2.86745e-10 1.13924e-06
+    ## Hmgcll1   633.353      -0.279578 0.0494532  -5.65339 1.57318e-08 4.68767e-05
+    ## Anxa11    194.990       0.514626 0.0930202   5.53241 3.15858e-08 7.52943e-05
+    ## Xrcc4     343.153       0.317501 0.0582208   5.45339 4.94196e-08 9.81721e-05
 
 ``` r
+# add deseq2 results to master results table
 difmethods$deseq2 <-  deseq_group$pvalue
 ```
 
@@ -1277,17 +1377,19 @@ other methods).
 difmethods[apply(difmethods, 1, function(x) any(is.na(x))),]
 ```
 
-    ##        lmlogcpm limmalogcpm limmatrend limmavoom limmavoomTMM  edgeRlrt
-    ## Gh    0.9666708   0.9647626  0.9644664 0.4963914    0.5060823 0.2294544
-    ## Inadl 0.1857345   0.1667272  0.1654464 0.1497694    0.1713521 0.1089240
-    ## Prkcd 0.5978009   0.5797309  0.5764311 0.6065118    0.6539891 0.3446382
-    ##       edgeRquasi deseq2
-    ## Gh     0.9204300     NA
-    ## Inadl  0.1157458     NA
-    ## Prkcd  0.3489087     NA
+    ##         lmlogcpm limmalogcpm limmatrend limmavoom limmavoomTMM  edgeRlrt
+    ## Gh     0.9666708   0.9647778  0.9644649 0.4935548    0.5028742 0.2296831
+    ## Inadl  0.1857345   0.1669024  0.1654348 0.1500759    0.1731358 0.1089681
+    ## Prkcd  0.5978009   0.5798900  0.5764137 0.6066300    0.6558730 0.3448177
+    ## Slc6a2 0.9912103   0.9907345  0.9907499 0.6532377    0.6663123 0.5736908
+    ##        edgeRquasi deseq2
+    ## Gh      0.9205048     NA
+    ## Inadl   0.1157896     NA
+    ## Prkcd   0.3491245     NA
+    ## Slc6a2  0.9459939     NA
 
 Also note that by default `DESeq2` applies Independent Filtering when
-computing adjusted p-values. This is different than standard FDR
+computing adjusted p-values. This is different than ‘standard’ FDR
 correction, and tends to have greater power by ‘spending’ the type I
 error according to the overall mean expression. However, it can also
 lead to additional genes with missing adjusted p-values (these are
@@ -1357,8 +1459,7 @@ better we can first adjust the data for DPC, as that’s a huge signal in
 the data. It’s OK to do this as long as it’s clearly indicated that it
 has been done. We’ll use the limma-trend version of the analysis since
 this is carried out on the log2 CPM values, which are nice to use for
-visualization (as opposed to counts). In addition, we’ll show how to
-clip the heatmap.
+visualization (as opposed to raw counts).
 
 The estimated (fitted) effect of DPC is the fitted coefficients for DPC
 multiplied by the relevant part of the design matrix. We subtract that
@@ -1384,37 +1485,15 @@ pheatmap(dadjG %>% data.frame() %>%
 
 Now the pattern by Group (WT vs Mutant) is a bit easier to see.
 
-Clipping the data (recall from our lecture on exploratory data analysis
-and visualization) may make it easier to visualize. It’s somewhat a
-matter of taste; and in this case it doesn’t make a huge difference.
+Heatmap for all the FDR \< 0.05 genes (there are 305 by limma-trend:
 
 ``` r
-# Sets the minimum (-3), the maximum (3), and the increasing steps (range divided by number of colors)
-# for the color scale
-breaksList = seq(-3, 3, by = 6/length(bcols))
-
-pheatmap(dadjG %>% data.frame() %>%
-           dplyr::filter(rownames(sumexpG) %in% rownames(topTable(limmavoomTMM, number = 30, 
-                                                     coef = "GroupMu", sort.by = "p"))),
-         scale="row", breaks = breaksList,
-         cluster_rows = TRUE, cluster_cols = FALSE, color = bcols, border_color = NA,
-           annotation_col = colData(sumexpG)[,c("Group", "DPC","Sex" )] %>% data.frame(),
-         main = "Chd8 genotype effect, Dev stage-corrected,  clipped (limma-trend)")
-```
-
-![](examples-RNAseq_files/figure-gfm/adjhm.clip-1.png)<!-- -->
-
-Heatmap for all the FDR \< 0.05 genes (there are 299 by limma-trend:
-
-``` r
-breaksList = seq(-3, 3, by = 6/length(bcols))
-
 pheatmap(dadjG %>% data.frame() %>%
            dplyr::filter(rownames(sumexpG) %in% rownames(topTable(limmavoomTMM, number = Inf, 
                                                                   p.value = 0.05,
                                                                   coef = "GroupMu", 
                                                                   sort.by = "p"))),
-         scale="row", breaks = breaksList, show_rownames = FALSE,
+         scale="row", show_rownames = FALSE,
          cluster_rows = TRUE, cluster_cols = FALSE, color = bcols, border_color = NA,
            annotation_col = colData(sumexpG)[,c("Group", "DPC","Sex" )] %>% data.frame(),
          main = "Chd8 genotype FDR < 0.05, Dev stage-corrected, clipped (limma-trend)")
@@ -1439,9 +1518,9 @@ difqval["Chd8",]
 ```
 
     ##     lmlogcpm  limmalogcpm   limmatrend    limmavoom limmavoomTMM     edgeRlrt 
-    ## 3.337684e-09 9.422548e-10 4.172884e-10 4.122962e-10 1.775047e-10 1.251449e-24 
+    ## 3.393778e-09 9.788399e-10 4.241634e-10 4.145929e-10 1.816495e-10 1.317549e-24 
     ##   edgeRquasi       deseq2 
-    ## 1.536544e-10 2.245049e-25
+    ## 1.572575e-10 2.484827e-25
 
 Yes! Though the p-values for DESeq2 and edgeR-LRT are much smaller than
 the rest.
@@ -1457,7 +1536,7 @@ difmethods %>%
   facet_wrap(~ Method)
 ```
 
-    ## Warning: Removed 3 rows containing non-finite values (stat_bin).
+    ## Warning: Removed 4 rows containing non-finite values (`stat_bin()`).
 
 ![](examples-RNAseq_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
 
@@ -1503,9 +1582,9 @@ unlist(lapply(topGenes, length))
 ```
 
     ##     lmlogcpm  limmalogcpm   limmatrend    limmavoom limmavoomTMM     edgeRlrt 
-    ##          416          381          384          615          586          552 
+    ##          420          385          387          626          583          552 
     ##   edgeRquasi       deseq2 
-    ##          402          710
+    ##          403          717
 
 ``` r
 # Upset plot
@@ -1524,16 +1603,16 @@ enough to give a sense.
 
 General observations:
 
--   Overall agreement among methods is quite good, especially for the
-    top genes.
--   Most significant p-values from edgeR (LR) and DESeq2 are much
-    smaller than for other methods (not that you should seriously
-    believe p-values like 10^-30).
--   limma-trend didn’t perform much differently than regular limma,
-    possibly because of the wide range of depths among samples (greater
-    than 4-fold difference).
--   Variations of approach within methods doesn’t make a massive
-    difference (e.g. voom with or without norm factors)
+- Overall agreement among methods is quite good, especially for the top
+  genes.
+- Most significant p-values from edgeR (LR) and DESeq2 are much smaller
+  than for other methods (not that you should seriously believe p-values
+  like 10^-30).
+- limma-trend didn’t perform much differently than regular limma,
+  possibly because of the wide range of depths among samples (greater
+  than 4-fold difference).
+- Variations of approach within methods doesn’t make a massive
+  difference (e.g. voom with or without norm factors)
 
 ## Differences between limma-trend and limma-voom
 
@@ -1559,30 +1638,30 @@ disg <- row.names(difmethods)[which( difranks[,"limmavoom"] < 10 &
                                      difranks[,"limmatrend"] > 1000)]
 
 # these "hits" are specific to voom.
-signif(difmethods[disg,], 3)
+difmethods[disg,]
 ```
 
-    ##        lmlogcpm limmalogcpm limmatrend limmavoom limmavoomTMM edgeRlrt
-    ## Etnppl   0.0339      0.0325     0.0600  8.93e-07     6.19e-07  0.00855
-    ## Plin4    0.0455      0.0354     0.0369  2.58e-09     2.01e-09  0.09960
-    ## Xdh      0.0296      0.0262     0.0430  6.48e-07     6.61e-07  0.01070
-    ##        edgeRquasi deseq2
-    ## Etnppl    0.03810 0.1170
-    ## Plin4     0.00731 0.0995
-    ## Xdh       0.03190 0.0473
+    ##          lmlogcpm limmalogcpm limmatrend    limmavoom limmavoomTMM    edgeRlrt
+    ## Etnppl 0.03392980  0.03255416 0.06004649 8.773553e-07 6.359142e-07 0.009509664
+    ## Plin4  0.04550473  0.03545877 0.03687705 2.443131e-09 1.935009e-09 0.099879185
+    ## Xdh    0.02960385  0.02621567 0.04298137 6.314318e-07 6.585187e-07 0.012479232
+    ##         edgeRquasi     deseq2
+    ## Etnppl 0.046673481 0.12000347
+    ## Plin4  0.009594486 0.09961678
+    ## Xdh    0.039117814 0.04866324
 
 ``` r
 difranks[disg,]
 ```
 
     ##        lmlogcpm limmalogcpm limmatrend limmavoom limmavoomTMM edgeRlrt
-    ## Etnppl     1900        1840       2578         9            6      923
-    ## Plin4      2217        1928       1994         2            2     3353
-    ## Xdh        1741        1638       2154         7            7     1055
+    ## Etnppl     1916        1856       2597         9            6      973
+    ## Plin4      2235        1945       2010         2            2     3391
+    ## Xdh        1757        1654       2172         7            7     1157
     ##        edgeRquasi deseq2
-    ## Etnppl       2013   3737
-    ## Plin4         766   3435
-    ## Xdh          1837   2351
+    ## Etnppl       2259   3816
+    ## Plin4         914   3461
+    ## Xdh          2053   2390
 
 What do these genes look like?
 
