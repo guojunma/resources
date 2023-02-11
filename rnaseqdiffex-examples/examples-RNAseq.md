@@ -55,8 +55,7 @@ the STAT540 lecture on RNA-seq analysis.
 Among other things it shows how to run differential expression analysis
 on RNA-seq data sets using a variety of methods. We’ll get a sense at
 how the results differ across methods, though obviously doing this on a
-single data set is not a real evaluation. The example data set is the
-same “Gompers” Chd8 mutant data set we introduced in lecture 1.
+single data set is not a systematic evaluation.
 
 # Setup
 
@@ -101,12 +100,13 @@ theme_update(panel.grid.major = element_blank(), panel.grid.minor = element_blan
 
 ## Loading and preparing data
 
-We will use the same dataset as introduced in [lecture
-1](https://stat540-ubc.github.io/lectures/lectures_2021/lect03-eda.html#1).
-This is the data from [Gompers et al.,
+We will use the dataset from [Gompers et al.,
 2017](https://www.ncbi.nlm.nih.gov/pubmed/28671691), that is available
 on GEO, at [Accession
 GSE99331](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE99331).
+This data involves the comparison of mice who are mutant for the Chd8
+gene (important in ASD, as introduced in [lecture
+1](https://stat540-ubc.github.io/lectures/lectures_2021/lect03-eda.html#1)).
 However, note that this data is only publicly available as RPKM values,
 *not* raw counts. As raw counts are preferable for differential
 expression analysis, Paul Pavlidis obtained these counts directly from
